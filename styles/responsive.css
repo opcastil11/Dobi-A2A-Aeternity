@@ -1,0 +1,439 @@
+/* Responsive Design */
+
+/* Large screens (1200px and up) */
+@media (min-width: 1200px) {
+    .nav-container {
+        max-width: 1400px;
+    }
+    
+    .main-content {
+        padding: 0 2rem;
+    }
+    
+    .hero-title {
+        font-size: 4rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .devices-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Medium screens (768px to 1199px) */
+@media (max-width: 1199px) {
+    .nav-container {
+        padding: 0 1.5rem;
+    }
+    
+    .hero-title {
+        font-size: 3rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .devices-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Small screens (768px and down) */
+@media (max-width: 768px) {
+    .nav-container {
+        padding: 0 1rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .nav-menu {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        gap: 1rem;
+    }
+    
+    .nav-auth {
+        order: 2;
+    }
+    
+    .nav-brand {
+        order: 1;
+    }
+    
+    .main-content {
+        margin-top: 120px;
+    }
+    
+    .page {
+        padding: 1rem;
+    }
+    
+    .hero {
+        padding: 2rem 0;
+    }
+    
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.125rem;
+    }
+    
+    .hero-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .hero-buttons .btn {
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .stat-card {
+        padding: 1.5rem;
+    }
+    
+    .devices-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .device-form {
+        padding: 1.5rem;
+    }
+    
+    .form-field-group {
+        grid-template-columns: 1fr;
+    }
+    
+    .device-type-selector {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .dobi-header {
+        justify-content: center;
+    }
+    
+    .bot-input-container {
+        flex-direction: column;
+    }
+    
+    .social-media {
+        right: 1rem;
+        bottom: 1rem;
+    }
+    
+    .social-link {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .toast-container {
+        right: 1rem;
+        left: 1rem;
+    }
+    
+    .toast {
+        transform: translateY(-100px);
+    }
+    
+    .toast.show {
+        transform: translateY(0);
+    }
+}
+
+/* Extra small screens (480px and down) */
+@media (max-width: 480px) {
+    .nav-container {
+        padding: 0 0.5rem;
+    }
+    
+    .nav-brand {
+        font-size: 1.25rem;
+    }
+    
+    .nav-logo {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .nav-btn {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .btn {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.875rem;
+    }
+    
+    .btn-large {
+        padding: 0.875rem 1.5rem;
+        font-size: 1rem;
+    }
+    
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1rem;
+    }
+    
+    .stat-card {
+        padding: 1rem;
+    }
+    
+    .stat-card i {
+        font-size: 2rem;
+    }
+    
+    .stat-card h3 {
+        font-size: 1rem;
+    }
+    
+    .stat-card p {
+        font-size: 1.5rem;
+    }
+    
+    .device-form {
+        padding: 1rem;
+    }
+    
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.875rem;
+    }
+    
+    .device-summary-section,
+    .device-logs-section,
+    .dobi-bot-section {
+        padding: 1rem;
+    }
+    
+    .device-summary-card {
+        padding: 1rem;
+    }
+    
+    .device-summary-card h4 {
+        font-size: 1.125rem;
+    }
+    
+    .summary-item label {
+        font-size: 0.75rem;
+    }
+    
+    .summary-item span {
+        font-size: 0.875rem;
+    }
+    
+    .address-text,
+    .url-text {
+        font-size: 0.75rem;
+    }
+    
+    .bot-messages {
+        padding: 0.75rem;
+    }
+    
+    .bot-avatar-img {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .message-content p {
+        font-size: 0.75rem;
+    }
+    
+    .bot-input-container input {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.875rem;
+    }
+    
+    .transaction-item {
+        padding: 1rem;
+    }
+    
+    .transaction-hash {
+        font-size: 0.75rem;
+    }
+    
+    .transaction-timestamp {
+        font-size: 0.75rem;
+    }
+    
+    .transaction-details {
+        font-size: 0.75rem;
+    }
+    
+    .log-item {
+        padding: 0.75rem;
+    }
+    
+    .log-timestamp {
+        font-size: 0.75rem;
+    }
+    
+    .log-level {
+        font-size: 0.625rem;
+        padding: 0.125rem 0.375rem;
+    }
+    
+    .log-message {
+        font-size: 0.75rem;
+    }
+}
+
+/* Landscape orientation adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+    .hero {
+        padding: 1rem 0;
+    }
+    
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1rem;
+    }
+    
+    .stats {
+        margin: 2rem 0;
+    }
+    
+    .recent-section {
+        margin: 2rem 0;
+    }
+    
+    .main-content {
+        margin-top: 100px;
+    }
+}
+
+/* Print styles */
+@media print {
+    .navbar,
+    .social-media,
+    .toast-container,
+    .loading-spinner {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-top: 0;
+    }
+    
+    .page {
+        display: block !important;
+        padding: 0;
+    }
+    
+    body {
+        background: white;
+        color: black;
+    }
+    
+    .device-card,
+    .device-summary-card,
+    .transaction-item,
+    .log-item {
+        background: white;
+        border: 1px solid #ccc;
+        color: black;
+    }
+    
+    .gradient-text {
+        background: none;
+        -webkit-text-fill-color: initial;
+        color: #333;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .device-card,
+    .device-summary-card,
+    .transaction-item,
+    .log-item {
+        border: 2px solid;
+    }
+    
+    .btn {
+        border: 2px solid;
+    }
+    
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        border: 2px solid;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .floating-shapes::before,
+    .floating-shapes::after {
+        animation: none;
+    }
+    
+    .spinner {
+        animation: none;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    /* Already using dark theme, but can add specific dark mode adjustments here */
+}
+
+/* Light mode support */
+@media (prefers-color-scheme: light) {
+    /* Can add light mode overrides here if needed */
+}
