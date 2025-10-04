@@ -1,0 +1,471 @@
+@compiler >= 6
+
+contract ChargerElectricityPayment =
+
+  record charger_info = {
+    id: string,
+    operator: address,
+    location: string,
+    balance: int,
+    total_kwh_consumed: int,
+    total_paid: int,
+    is_active: bool,
+    created_at: int }
+
+  record electricity_provider = {
+    id: string,
+    provider_address: address,
+    name: string,
+    price_per_kwh: int,
+    total_kwh_supplied: int,
+    total_revenue: int,
+    is_active: bool }
+
+  record consumption_session = {
+    id: int,
+    charger_id: string,
+    provider_id: string,
+    start_time: int,
+    end_time: option(int),
+    kwh_consumed: int,
+    price_per_kwh: int,
+    total_cost: int,
+    last_reading_time: int,
+    status: consumption_status,
+    oracle_id: oracle(string, int),
+    metadata: string }
+
+  datatype consumption_status = Active | Completed | Cancelled
+
+  record payment_record = {
+    id: int,
+    session_id: int,
+    charger_id: string,
+    provider_address: address,
+    amount: int,
+    kwh_amount: int,
+    timestamp: int,
+    payment_type: payment_type }
+
+  datatype payment_type = StreamingPayment | FinalPayment | TopUpPayment
+
+  record alert = {
+    id: int,
+    charger_id: string,
+    alert_type: alert_type,
+    message: string,
+    timestamp: int,
+    resolved: bool }
+
+  datatype alert_type = LowBalance | HighConsumption | PaymentFailed | ProviderOffline
+
+  record dynamic_pricing = {
+    provider_id: string,
+    base_price: int,
+    peak_multiplier: int,
+    off_peak_multiplier: int,
+    peak_hours: list(int) }
+
+  record state = {
+    owner: address,
+    chargers: map(string, charger_info),
+    operator_chargers: map(address, list(string)),
+    providers: map(string, electricity_provider),
+    sessions: map(int, consumption_session),
+    session_counter: int,
+    charger_sessions: map(string, list(int)),
+    payments: map(int, payment_record),
+    payment_counter: int,
+    alerts: map(int, alert),
+    alert_counter: int,
+    dynamic_pricing: map(string, dynamic_pricing),
+    paused: bool,
+    min_balance_threshold: int,
+    payment_interval: int }
+
+  datatype event = 
+      ChargerRegistered(string, address) 
+    | ProviderRegistered(string, indexed address, indexed int) 
+    | ConsumptionStarted(indexed int, string) 
+    | ConsumptionUpdate(indexed int, indexed int, indexed int) 
+    | ConsumptionEnded(indexed int, indexed int, indexed int) 
+    | PaymentProcessed(indexed int, indexed address, indexed int) 
+    | AlertCreated(indexed int, string) 
+    | BalanceRefilled(string, indexed int)
+
+  entrypoint init() : state = {
+    owner = Call.caller,
+    chargers = {},
+    operator_chargers = {},
+    providers = {},
+    sessions = {},
+    session_counter = 0,
+    charger_sessions = {},
+    payments = {},
+    payment_counter = 0,
+    alerts = {},
+    alert_counter = 0,
+    dynamic_pricing = {},
+    paused = false,
+    min_balance_threshold = 100,
+    payment_interval = 5 }
+
+  function list_contains(x: int, xs: list(int)) : bool =
+    switch(xs)
+      [] => false
+      h :: t => if(h == x) true else list_contains(x, t)
+
+  stateful entrypoint register_charger(
+    charger_id: string,
+    location: string,
+    initial_balance: int) =
+    
+    require(!Map.member(charger_id, state.chargers), "CHARGER_ALREADY_EXISTS")
+    require(initial_balance >= 0, "INVALID_BALANCE")
+    
+    let charger = {
+      id = charger_id,
+      operator = Call.caller,
+      location = location,
+      balance = initial_balance,
+      total_kwh_consumed = 0,
+      total_paid = 0,
+      is_active = true,
+      created_at = Chain.timestamp }
+    
+    let operator_list = Map.lookup_default(Call.caller, state.operator_chargers, [])
+    
+    put(state{
+      chargers[charger_id] = charger,
+      operator_chargers[Call.caller] = charger_id :: operator_list })
+    
+    Chain.event(ChargerRegistered(charger_id, Call.caller))
+
+  payable stateful entrypoint fund_charger(charger_id: string) =
+    require(Map.member(charger_id, state.chargers), "CHARGER_NOT_FOUND")
+    require(Call.value > 0, "NO_FUNDS")
+    
+    let charger = state.chargers[charger_id]
+    require(Call.caller == charger.operator || Call.caller == state.owner, "NOT_AUTHORIZED")
+    
+    let updated_charger = charger{ balance = charger.balance + Call.value }
+    put(state{ chargers[charger_id] = updated_charger })
+    
+    Chain.event(BalanceRefilled(charger_id, Call.value))
+
+  entrypoint get_charger_info(charger_id: string) : option(charger_info) =
+    Map.lookup(charger_id, state.chargers)
+
+  entrypoint get_charger_balance(charger_id: string) : int =
+    switch(Map.lookup(charger_id, state.chargers))
+      None => 0
+      Some(charger) => charger.balance
+
+  stateful entrypoint register_provider(
+    provider_id: string,
+    name: string,
+    price_per_kwh: int) =
+    
+    require(!Map.member(provider_id, state.providers), "PROVIDER_ALREADY_EXISTS")
+    require(price_per_kwh > 0, "INVALID_PRICE")
+    
+    let provider = {
+      id = provider_id,
+      provider_address = Call.caller,
+      name = name,
+      price_per_kwh = price_per_kwh,
+      total_kwh_supplied = 0,
+      total_revenue = 0,
+      is_active = true }
+    
+    put(state{ providers[provider_id] = provider })
+    Chain.event(ProviderRegistered(provider_id, Call.caller, price_per_kwh))
+
+  stateful entrypoint set_dynamic_pricing(
+    provider_id: string,
+    base_price: int,
+    peak_multiplier: int,
+    off_peak_multiplier: int,
+    peak_hours: list(int)) =
+    
+    require(Map.member(provider_id, state.providers), "PROVIDER_NOT_FOUND")
+    let provider = state.providers[provider_id]
+    require(Call.caller == provider.provider_address, "NOT_PROVIDER")
+    
+    let pricing = {
+      provider_id = provider_id,
+      base_price = base_price,
+      peak_multiplier = peak_multiplier,
+      off_peak_multiplier = off_peak_multiplier,
+      peak_hours = peak_hours }
+    
+    put(state{ dynamic_pricing[provider_id] = pricing })
+
+  function get_current_price(provider_id: string) : int =
+    let provider = state.providers[provider_id]
+    
+    switch(Map.lookup(provider_id, state.dynamic_pricing))
+      None => provider.price_per_kwh
+      Some(pricing) =>
+        let current_hour = (Chain.timestamp / 3600) mod 24
+        let is_peak = list_contains(current_hour, pricing.peak_hours)
+        
+        if(is_peak)
+          (pricing.base_price * pricing.peak_multiplier) / 100
+        else
+          (pricing.base_price * pricing.off_peak_multiplier) / 100
+
+  entrypoint get_provider_info(provider_id: string) : option(electricity_provider) =
+    Map.lookup(provider_id, state.providers)
+
+  stateful entrypoint start_consumption(
+    charger_id: string,
+    provider_id: string,
+    oracle_id: oracle(string, int),
+    estimated_kwh: int,
+    metadata: string) : int =
+    
+    require(!state.paused, "CONTRACT_PAUSED")
+    require(Map.member(charger_id, state.chargers), "CHARGER_NOT_FOUND")
+    require(Map.member(provider_id, state.providers), "PROVIDER_NOT_FOUND")
+    
+    let charger = state.chargers[charger_id]
+    require(charger.is_active, "CHARGER_NOT_ACTIVE")
+    
+    let provider = state.providers[provider_id]
+    require(provider.is_active, "PROVIDER_NOT_ACTIVE")
+    
+    let current_price = get_current_price(provider_id)
+    let estimated_cost = estimated_kwh * current_price
+    
+    require(charger.balance >= estimated_cost, "INSUFFICIENT_BALANCE")
+    
+    let session_id = state.session_counter + 1
+    let session = {
+      id = session_id,
+      charger_id = charger_id,
+      provider_id = provider_id,
+      start_time = Chain.timestamp,
+      end_time = None,
+      kwh_consumed = 0,
+      price_per_kwh = current_price,
+      total_cost = 0,
+      last_reading_time = Chain.timestamp,
+      status = Active,
+      oracle_id = oracle_id,
+      metadata = metadata }
+    
+    let charger_session_list = Map.lookup_default(charger_id, state.charger_sessions, [])
+    
+    put(state{
+      sessions[session_id] = session,
+      session_counter = session_id,
+      charger_sessions[charger_id] = session_id :: charger_session_list })
+    
+    Chain.event(ConsumptionStarted(session_id, charger_id))
+    
+    session_id
+
+  stateful entrypoint update_consumption_reading(
+    session_id: int,
+    kwh_reading: int) =
+    
+    require(Map.member(session_id, state.sessions), "SESSION_NOT_FOUND")
+    
+    let session = state.sessions[session_id]
+    require(session.status == Active, "SESSION_NOT_ACTIVE")
+    require(kwh_reading >= session.kwh_consumed, "INVALID_READING")
+    
+    let provider = state.providers[session.provider_id]
+    require(Call.caller == provider.provider_address || Call.caller == state.owner, "NOT_AUTHORIZED")
+    
+    let kwh_increment = kwh_reading - session.kwh_consumed
+    
+    if(kwh_increment > 0)
+      let cost_increment = kwh_increment * session.price_per_kwh
+      
+      let charger = state.chargers[session.charger_id]
+      
+      if(charger.balance >= cost_increment)
+        process_electricity_payment(session_id, kwh_increment, cost_increment)
+        
+        let updated_session = session{
+          kwh_consumed = kwh_reading,
+          total_cost = session.total_cost + cost_increment,
+          last_reading_time = Chain.timestamp }
+        
+        put(state{ sessions[session_id] = updated_session })
+        
+        Chain.event(ConsumptionUpdate(session_id, kwh_reading, cost_increment))
+        
+        check_charger_balance(session.charger_id)
+      else
+        let _ = create_alert_internal(session.charger_id, LowBalance, "Insufficient balance to continue")
+        stop_consumption_internal(session_id, kwh_reading)
+
+  stateful entrypoint stop_consumption(session_id: int, final_kwh: int) =
+    require(Map.member(session_id, state.sessions), "SESSION_NOT_FOUND")
+    
+    let session = state.sessions[session_id]
+    require(session.status == Active, "SESSION_NOT_ACTIVE")
+    
+    let charger = state.chargers[session.charger_id]
+    let provider = state.providers[session.provider_id]
+    
+    require(
+      Call.caller == charger.operator || 
+      Call.caller == provider.provider_address ||
+      Call.caller == state.owner,
+      "NOT_AUTHORIZED")
+    
+    stop_consumption_internal(session_id, final_kwh)
+
+  stateful function stop_consumption_internal(session_id: int, final_kwh: int) =
+    let session = state.sessions[session_id]
+    
+    if(final_kwh > session.kwh_consumed)
+      let kwh_increment = final_kwh - session.kwh_consumed
+      let cost_increment = kwh_increment * session.price_per_kwh
+      
+      let charger = state.chargers[session.charger_id]
+      if(charger.balance >= cost_increment)
+        process_electricity_payment(session_id, kwh_increment, cost_increment)
+    
+    let final_cost = session.total_cost + ((final_kwh - session.kwh_consumed) * session.price_per_kwh)
+    
+    let updated_session = session{
+      status = Completed,
+      end_time = Some(Chain.timestamp),
+      kwh_consumed = final_kwh,
+      total_cost = final_cost }
+    
+    let charger = state.chargers[session.charger_id]
+    let updated_charger = charger{
+      total_kwh_consumed = charger.total_kwh_consumed + final_kwh,
+      total_paid = charger.total_paid + final_cost }
+    
+    let provider = state.providers[session.provider_id]
+    let updated_provider = provider{
+      total_kwh_supplied = provider.total_kwh_supplied + final_kwh,
+      total_revenue = provider.total_revenue + final_cost }
+    
+    put(state{
+      sessions[session_id] = updated_session,
+      chargers[session.charger_id] = updated_charger,
+      providers[session.provider_id] = updated_provider })
+    
+    Chain.event(ConsumptionEnded(session_id, final_kwh, final_cost))
+
+  stateful function process_electricity_payment(
+    session_id: int,
+    kwh_amount: int,
+    total_amount: int) =
+    
+    let session = state.sessions[session_id]
+    let charger = state.chargers[session.charger_id]
+    let provider = state.providers[session.provider_id]
+    
+    let updated_charger = charger{ balance = charger.balance - total_amount }
+    
+    Chain.spend(provider.provider_address, total_amount)
+    
+    let payment_id = state.payment_counter + 1
+    let payment = {
+      id = payment_id,
+      session_id = session_id,
+      charger_id = session.charger_id,
+      provider_address = provider.provider_address,
+      amount = total_amount,
+      kwh_amount = kwh_amount,
+      timestamp = Chain.timestamp,
+      payment_type = StreamingPayment }
+    
+    put(state{
+      chargers[session.charger_id] = updated_charger,
+      payments[payment_id] = payment,
+      payment_counter = payment_id })
+    
+    Chain.event(PaymentProcessed(payment_id, provider.provider_address, total_amount))
+
+  function alert_type_to_string(at: alert_type) : string =
+    switch(at)
+      LowBalance => "LowBalance"
+      HighConsumption => "HighConsumption"
+      PaymentFailed => "PaymentFailed"
+      ProviderOffline => "ProviderOffline"
+
+  stateful function create_alert_internal(
+    charger_id: string,
+    alert_type: alert_type,
+    message: string) : int =
+    
+    let alert_id = state.alert_counter + 1
+    let new_alert = {
+      id = alert_id,
+      charger_id = charger_id,
+      alert_type = alert_type,
+      message = message,
+      timestamp = Chain.timestamp,
+      resolved = false }
+    
+    put(state{
+      alerts[alert_id] = new_alert,
+      alert_counter = alert_id })
+    
+    Chain.event(AlertCreated(alert_id, alert_type_to_string(alert_type)))
+    alert_id
+
+  stateful function check_charger_balance(charger_id: string) =
+    let charger = state.chargers[charger_id]
+    if(charger.balance < state.min_balance_threshold)
+      let _ = create_alert_internal(charger_id, LowBalance, "Balance below threshold")
+      ()
+    else
+      ()
+
+  stateful entrypoint resolve_alert(alert_id: int) =
+    require(Map.member(alert_id, state.alerts), "ALERT_NOT_FOUND")
+    
+    let alert = state.alerts[alert_id]
+    let updated_alert = alert{ resolved = true }
+    put(state{ alerts[alert_id] = updated_alert })
+
+  entrypoint get_charger_alerts(charger_id: string) : list(alert) =
+    []
+
+  entrypoint get_session(session_id: int) : option(consumption_session) =
+    Map.lookup(session_id, state.sessions)
+
+  entrypoint get_charger_sessions(charger_id: string) : list(consumption_session) =
+    []
+
+  entrypoint get_active_sessions() : list(consumption_session) =
+    []
+
+  entrypoint get_payment(payment_id: int) : option(payment_record) =
+    Map.lookup(payment_id, state.payments)
+
+  entrypoint calculate_estimated_cost(
+    provider_id: string,
+    estimated_kwh: int) : int =
+    let current_price = get_current_price(provider_id)
+    estimated_kwh * current_price
+
+  entrypoint get_operator_chargers(operator: address) : list(charger_info) =
+    []
+
+  stateful entrypoint set_min_balance_threshold(new_threshold: int) =
+    require(Call.caller == state.owner, "NOT_OWNER")
+    require(new_threshold > 0, "INVALID_THRESHOLD")
+    put(state{ min_balance_threshold = new_threshold })
+
+  stateful entrypoint pause_contract() =
+    require(Call.caller == state.owner, "NOT_OWNER")
+    put(state{ paused = true })
+
+  stateful entrypoint unpause_contract() =
+    require(Call.caller == state.owner, "NOT_OWNER")
+    put(state{ paused = false })
+
+  entrypoint get_owner() : address =
+    state.owner

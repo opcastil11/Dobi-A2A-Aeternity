@@ -1,0 +1,848 @@
+{
+  "event": {
+    "variant": [
+      {
+        "ChargerRegistered": [
+          "string",
+          "address"
+        ]
+      },
+      {
+        "ProviderRegistered": [
+          "string",
+          "address",
+          "int"
+        ]
+      },
+      {
+        "ConsumptionStarted": [
+          "int",
+          "string"
+        ]
+      },
+      {
+        "ConsumptionUpdate": [
+          "int",
+          "int",
+          "int"
+        ]
+      },
+      {
+        "ConsumptionEnded": [
+          "int",
+          "int",
+          "int"
+        ]
+      },
+      {
+        "PaymentProcessed": [
+          "int",
+          "address",
+          "int"
+        ]
+      },
+      {
+        "AlertCreated": [
+          "int",
+          "string"
+        ]
+      },
+      {
+        "BalanceRefilled": [
+          "string",
+          "int"
+        ]
+      }
+    ]
+  },
+  "functions": [
+    {
+      "arguments": [],
+      "name": "init",
+      "payable": false,
+      "returns": "ChargerElectricityPayment.state",
+      "stateful": false
+    },
+    {
+      "arguments": [
+        {
+          "name": "charger_id",
+          "type": "string"
+        },
+        {
+          "name": "location",
+          "type": "string"
+        },
+        {
+          "name": "initial_balance",
+          "type": "int"
+        }
+      ],
+      "name": "register_charger",
+      "payable": false,
+      "returns": {
+        "tuple": []
+      },
+      "stateful": true
+    },
+    {
+      "arguments": [
+        {
+          "name": "charger_id",
+          "type": "string"
+        }
+      ],
+      "name": "fund_charger",
+      "payable": true,
+      "returns": {
+        "tuple": []
+      },
+      "stateful": true
+    },
+    {
+      "arguments": [
+        {
+          "name": "charger_id",
+          "type": "string"
+        }
+      ],
+      "name": "get_charger_info",
+      "payable": false,
+      "returns": {
+        "option": [
+          "ChargerElectricityPayment.charger_info"
+        ]
+      },
+      "stateful": false
+    },
+    {
+      "arguments": [
+        {
+          "name": "charger_id",
+          "type": "string"
+        }
+      ],
+      "name": "get_charger_balance",
+      "payable": false,
+      "returns": "int",
+      "stateful": false
+    },
+    {
+      "arguments": [
+        {
+          "name": "provider_id",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "price_per_kwh",
+          "type": "int"
+        }
+      ],
+      "name": "register_provider",
+      "payable": false,
+      "returns": {
+        "tuple": []
+      },
+      "stateful": true
+    },
+    {
+      "arguments": [
+        {
+          "name": "provider_id",
+          "type": "string"
+        },
+        {
+          "name": "base_price",
+          "type": "int"
+        },
+        {
+          "name": "peak_multiplier",
+          "type": "int"
+        },
+        {
+          "name": "off_peak_multiplier",
+          "type": "int"
+        },
+        {
+          "name": "peak_hours",
+          "type": {
+            "list": [
+              "int"
+            ]
+          }
+        }
+      ],
+      "name": "set_dynamic_pricing",
+      "payable": false,
+      "returns": {
+        "tuple": []
+      },
+      "stateful": true
+    },
+    {
+      "arguments": [
+        {
+          "name": "provider_id",
+          "type": "string"
+        }
+      ],
+      "name": "get_provider_info",
+      "payable": false,
+      "returns": {
+        "option": [
+          "ChargerElectricityPayment.electricity_provider"
+        ]
+      },
+      "stateful": false
+    },
+    {
+      "arguments": [
+        {
+          "name": "charger_id",
+          "type": "string"
+        },
+        {
+          "name": "provider_id",
+          "type": "string"
+        },
+        {
+          "name": "oracle_id",
+          "type": {
+            "oracle": [
+              "string",
+              "int"
+            ]
+          }
+        },
+        {
+          "name": "estimated_kwh",
+          "type": "int"
+        },
+        {
+          "name": "metadata",
+          "type": "string"
+        }
+      ],
+      "name": "start_consumption",
+      "payable": false,
+      "returns": "int",
+      "stateful": true
+    },
+    {
+      "arguments": [
+        {
+          "name": "session_id",
+          "type": "int"
+        },
+        {
+          "name": "kwh_reading",
+          "type": "int"
+        }
+      ],
+      "name": "update_consumption_reading",
+      "payable": false,
+      "returns": {
+        "tuple": []
+      },
+      "stateful": true
+    },
+    {
+      "arguments": [
+        {
+          "name": "session_id",
+          "type": "int"
+        },
+        {
+          "name": "final_kwh",
+          "type": "int"
+        }
+      ],
+      "name": "stop_consumption",
+      "payable": false,
+      "returns": {
+        "tuple": []
+      },
+      "stateful": true
+    },
+    {
+      "arguments": [
+        {
+          "name": "alert_id",
+          "type": "int"
+        }
+      ],
+      "name": "resolve_alert",
+      "payable": false,
+      "returns": {
+        "tuple": []
+      },
+      "stateful": true
+    },
+    {
+      "arguments": [
+        {
+          "name": "charger_id",
+          "type": "string"
+        }
+      ],
+      "name": "get_charger_alerts",
+      "payable": false,
+      "returns": {
+        "list": [
+          "ChargerElectricityPayment.alert"
+        ]
+      },
+      "stateful": false
+    },
+    {
+      "arguments": [
+        {
+          "name": "session_id",
+          "type": "int"
+        }
+      ],
+      "name": "get_session",
+      "payable": false,
+      "returns": {
+        "option": [
+          "ChargerElectricityPayment.consumption_session"
+        ]
+      },
+      "stateful": false
+    },
+    {
+      "arguments": [
+        {
+          "name": "charger_id",
+          "type": "string"
+        }
+      ],
+      "name": "get_charger_sessions",
+      "payable": false,
+      "returns": {
+        "list": [
+          "ChargerElectricityPayment.consumption_session"
+        ]
+      },
+      "stateful": false
+    },
+    {
+      "arguments": [],
+      "name": "get_active_sessions",
+      "payable": false,
+      "returns": {
+        "list": [
+          "ChargerElectricityPayment.consumption_session"
+        ]
+      },
+      "stateful": false
+    },
+    {
+      "arguments": [
+        {
+          "name": "payment_id",
+          "type": "int"
+        }
+      ],
+      "name": "get_payment",
+      "payable": false,
+      "returns": {
+        "option": [
+          "ChargerElectricityPayment.payment_record"
+        ]
+      },
+      "stateful": false
+    },
+    {
+      "arguments": [
+        {
+          "name": "provider_id",
+          "type": "string"
+        },
+        {
+          "name": "estimated_kwh",
+          "type": "int"
+        }
+      ],
+      "name": "calculate_estimated_cost",
+      "payable": false,
+      "returns": "int",
+      "stateful": false
+    },
+    {
+      "arguments": [
+        {
+          "name": "operator",
+          "type": "address"
+        }
+      ],
+      "name": "get_operator_chargers",
+      "payable": false,
+      "returns": {
+        "list": [
+          "ChargerElectricityPayment.charger_info"
+        ]
+      },
+      "stateful": false
+    },
+    {
+      "arguments": [
+        {
+          "name": "new_threshold",
+          "type": "int"
+        }
+      ],
+      "name": "set_min_balance_threshold",
+      "payable": false,
+      "returns": {
+        "tuple": []
+      },
+      "stateful": true
+    },
+    {
+      "arguments": [],
+      "name": "pause_contract",
+      "payable": false,
+      "returns": {
+        "tuple": []
+      },
+      "stateful": true
+    },
+    {
+      "arguments": [],
+      "name": "unpause_contract",
+      "payable": false,
+      "returns": {
+        "tuple": []
+      },
+      "stateful": true
+    },
+    {
+      "arguments": [],
+      "name": "get_owner",
+      "payable": false,
+      "returns": "address",
+      "stateful": false
+    }
+  ],
+  "kind": "contract_main",
+  "name": "ChargerElectricityPayment",
+  "payable": false,
+  "state": {
+    "record": [
+      {
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "name": "chargers",
+        "type": {
+          "map": [
+            "string",
+            "ChargerElectricityPayment.charger_info"
+          ]
+        }
+      },
+      {
+        "name": "operator_chargers",
+        "type": {
+          "map": [
+            "address",
+            {
+              "list": [
+                "string"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "providers",
+        "type": {
+          "map": [
+            "string",
+            "ChargerElectricityPayment.electricity_provider"
+          ]
+        }
+      },
+      {
+        "name": "sessions",
+        "type": {
+          "map": [
+            "int",
+            "ChargerElectricityPayment.consumption_session"
+          ]
+        }
+      },
+      {
+        "name": "session_counter",
+        "type": "int"
+      },
+      {
+        "name": "charger_sessions",
+        "type": {
+          "map": [
+            "string",
+            {
+              "list": [
+                "int"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "payments",
+        "type": {
+          "map": [
+            "int",
+            "ChargerElectricityPayment.payment_record"
+          ]
+        }
+      },
+      {
+        "name": "payment_counter",
+        "type": "int"
+      },
+      {
+        "name": "alerts",
+        "type": {
+          "map": [
+            "int",
+            "ChargerElectricityPayment.alert"
+          ]
+        }
+      },
+      {
+        "name": "alert_counter",
+        "type": "int"
+      },
+      {
+        "name": "dynamic_pricing",
+        "type": {
+          "map": [
+            "string",
+            "ChargerElectricityPayment.dynamic_pricing"
+          ]
+        }
+      },
+      {
+        "name": "paused",
+        "type": "bool"
+      },
+      {
+        "name": "min_balance_threshold",
+        "type": "int"
+      },
+      {
+        "name": "payment_interval",
+        "type": "int"
+      }
+    ]
+  },
+  "typedefs": [
+    {
+      "name": "charger_info",
+      "typedef": {
+        "record": [
+          {
+            "name": "id",
+            "type": "string"
+          },
+          {
+            "name": "operator",
+            "type": "address"
+          },
+          {
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "name": "balance",
+            "type": "int"
+          },
+          {
+            "name": "total_kwh_consumed",
+            "type": "int"
+          },
+          {
+            "name": "total_paid",
+            "type": "int"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "type": "int"
+          }
+        ]
+      },
+      "vars": []
+    },
+    {
+      "name": "electricity_provider",
+      "typedef": {
+        "record": [
+          {
+            "name": "id",
+            "type": "string"
+          },
+          {
+            "name": "provider_address",
+            "type": "address"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "price_per_kwh",
+            "type": "int"
+          },
+          {
+            "name": "total_kwh_supplied",
+            "type": "int"
+          },
+          {
+            "name": "total_revenue",
+            "type": "int"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          }
+        ]
+      },
+      "vars": []
+    },
+    {
+      "name": "consumption_session",
+      "typedef": {
+        "record": [
+          {
+            "name": "id",
+            "type": "int"
+          },
+          {
+            "name": "charger_id",
+            "type": "string"
+          },
+          {
+            "name": "provider_id",
+            "type": "string"
+          },
+          {
+            "name": "start_time",
+            "type": "int"
+          },
+          {
+            "name": "end_time",
+            "type": {
+              "option": [
+                "int"
+              ]
+            }
+          },
+          {
+            "name": "kwh_consumed",
+            "type": "int"
+          },
+          {
+            "name": "price_per_kwh",
+            "type": "int"
+          },
+          {
+            "name": "total_cost",
+            "type": "int"
+          },
+          {
+            "name": "last_reading_time",
+            "type": "int"
+          },
+          {
+            "name": "status",
+            "type": "ChargerElectricityPayment.consumption_status"
+          },
+          {
+            "name": "oracle_id",
+            "type": {
+              "oracle": [
+                "string",
+                "int"
+              ]
+            }
+          },
+          {
+            "name": "metadata",
+            "type": "string"
+          }
+        ]
+      },
+      "vars": []
+    },
+    {
+      "name": "consumption_status",
+      "typedef": {
+        "variant": [
+          {
+            "Active": []
+          },
+          {
+            "Completed": []
+          },
+          {
+            "Cancelled": []
+          }
+        ]
+      },
+      "vars": []
+    },
+    {
+      "name": "payment_record",
+      "typedef": {
+        "record": [
+          {
+            "name": "id",
+            "type": "int"
+          },
+          {
+            "name": "session_id",
+            "type": "int"
+          },
+          {
+            "name": "charger_id",
+            "type": "string"
+          },
+          {
+            "name": "provider_address",
+            "type": "address"
+          },
+          {
+            "name": "amount",
+            "type": "int"
+          },
+          {
+            "name": "kwh_amount",
+            "type": "int"
+          },
+          {
+            "name": "timestamp",
+            "type": "int"
+          },
+          {
+            "name": "payment_type",
+            "type": "ChargerElectricityPayment.payment_type"
+          }
+        ]
+      },
+      "vars": []
+    },
+    {
+      "name": "payment_type",
+      "typedef": {
+        "variant": [
+          {
+            "StreamingPayment": []
+          },
+          {
+            "FinalPayment": []
+          },
+          {
+            "TopUpPayment": []
+          }
+        ]
+      },
+      "vars": []
+    },
+    {
+      "name": "alert",
+      "typedef": {
+        "record": [
+          {
+            "name": "id",
+            "type": "int"
+          },
+          {
+            "name": "charger_id",
+            "type": "string"
+          },
+          {
+            "name": "alert_type",
+            "type": "ChargerElectricityPayment.alert_type"
+          },
+          {
+            "name": "message",
+            "type": "string"
+          },
+          {
+            "name": "timestamp",
+            "type": "int"
+          },
+          {
+            "name": "resolved",
+            "type": "bool"
+          }
+        ]
+      },
+      "vars": []
+    },
+    {
+      "name": "alert_type",
+      "typedef": {
+        "variant": [
+          {
+            "LowBalance": []
+          },
+          {
+            "HighConsumption": []
+          },
+          {
+            "PaymentFailed": []
+          },
+          {
+            "ProviderOffline": []
+          }
+        ]
+      },
+      "vars": []
+    },
+    {
+      "name": "dynamic_pricing",
+      "typedef": {
+        "record": [
+          {
+            "name": "provider_id",
+            "type": "string"
+          },
+          {
+            "name": "base_price",
+            "type": "int"
+          },
+          {
+            "name": "peak_multiplier",
+            "type": "int"
+          },
+          {
+            "name": "off_peak_multiplier",
+            "type": "int"
+          },
+          {
+            "name": "peak_hours",
+            "type": {
+              "list": [
+                "int"
+              ]
+            }
+          }
+        ]
+      },
+      "vars": []
+    }
+  ]
+}

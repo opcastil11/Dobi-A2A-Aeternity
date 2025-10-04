@@ -1,0 +1,17 @@
+{
+  "name": "dobi-protocol",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Dobi Protocol - IoT Aeternity Interface",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "generate-aci": "node generate-aci.js"
+  },
+  "dependencies": {
+    "@aeternity/aepp-sdk": "^14.1.0"
+  },
+  "keywords": ["aeternity", "iot", "blockchain", "dobi"],
+  "author": "Dobi Team",
+  "license": "MIT"
+}

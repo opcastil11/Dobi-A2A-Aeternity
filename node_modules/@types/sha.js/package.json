@@ -1,0 +1,27 @@
+{
+    "name": "@types/sha.js",
+    "version": "2.4.4",
+    "description": "TypeScript definitions for sha.js",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/sha.js",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "BendingBender",
+            "githubUsername": "BendingBender",
+            "url": "https://github.com/BendingBender"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/sha.js"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "270ac1b70a9e2535c8ac9f3ed763930b99f6ee9bb51d6339667e5911e6ae7d6d",
+    "typeScriptVersion": "4.5"
+}

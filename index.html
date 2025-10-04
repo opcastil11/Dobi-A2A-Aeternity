@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dobi Protocol - IoT Aeternity Interface</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link rel="stylesheet" href="styles/forms.css">
+    <link rel="stylesheet" href="styles/responsive.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Button gradient overrides (paste after your CSS links) -->
+    <style>
+      :root{
+        --btn-radius: 14px;
+        --btn-border: 1px solid rgba(255,255,255,.14);
+        --btn-inner: inset 0 1px 0 rgba(255,255,255,.18);
+      }
+
+      /* Base */
+      .btn{
+        border-radius: var(--btn-radius) !important;
+        border: var(--btn-border);
+        color: #fff !important;
+        background-size: 200% 200%;
+        transition: transform .15s ease, box-shadow .2s ease, filter .2s ease, background-position .25s ease;
+        box-shadow: var(--btn-inner);
+      }
+      .btn.btn-large{ padding: 14px 22px; font-weight: 600; }
+
+      /* PRIMARIO: teal (como el de la imagen 2) */
+      .btn-primary{
+        background-image: linear-gradient(135deg, #0AF1D8 0%, #09E3C5 35%, #06C2FF 100%) !important;
+        box-shadow:
+          0 10px 24px rgba(0,255,208,.18),
+          0 2px 6px rgba(0,0,0,.25),
+          var(--btn-inner);
+      }
+      .btn-primary:hover{
+        transform: translateY(-1px);
+        filter: brightness(1.06);
+        background-position: 0% 60%;
+        box-shadow:
+          0 14px 30px rgba(0,255,208,.22),
+          0 4px 10px rgba(0,0,0,.28),
+          var(--btn-inner);
+      }
+      .btn-primary:active{ transform: translateY(0); filter: brightness(.98); }
+
+      /* SECUNDARIO: púrpura (como el de la imagen 2) */
+      .btn-secondary{
+        background-image: linear-gradient(135deg, #9B7BFF 0%, #8666FF 40%, #B995FF 100%) !important;
+        border: 1px solid rgba(155,123,255,.35);
+        box-shadow:
+          0 10px 24px rgba(155,123,255,.18),
+          var(--btn-inner);
+      }
+      .btn-secondary:hover{
+        transform: translateY(-1px);
+        filter: brightness(1.06);
+        background-position: 0% 60%;
+        box-shadow:
+          0 14px 30px rgba(155,123,255,.25),
+          0 4px 10px rgba(0,0,0,.28),
+          var(--btn-inner);
+      }
+
+      /* Pequeños */
+      .btn.btn-sm{ padding: 8px 12px; font-size: 13px; }
+
+      /* Nav pill activo (opcional, estilo de la imagen 2) */
+      .nav-btn.active, .nav-btn:focus-visible{
+        background-image: linear-gradient(135deg, #0AF1D8 0%, #06C2FF 100%) !important;
+        color: #0b1020 !important;
+        border: var(--btn-border);
+        box-shadow: 0 6px 16px rgba(0,255,208,.16), var(--btn-inner);
+      }
+
+      /* Conectar wallet usa el primario */
+      #connect-wallet.btn{
+        background-image: linear-gradient(135deg, #0AF1D8 0%, #06C2FF 100%) !important;
+      }
+    </style>
+    
+    <!-- Aeternity SDK -->
+    <script src="https://unpkg.com/@aeternity/aepp-sdk@14.1.0/dist/aepp-sdk.browser-script.cjs"></script>
+</head>
+<body>
+    <!-- Tech particles -->
+    <div class="tech-particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+    
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <img src="images/dobi-logo2.png" alt="Dobi Protocol Logo" class="nav-logo">
+                <span class="gradient-text">Dobi</span>
+            </div>
+            <div class="nav-menu">
+                <button class="nav-btn" id="nav-home">Home</button>
+                <button class="nav-btn" id="nav-devices">Devices</button>
+                <button class="nav-btn" id="nav-transactions">Transactions</button>
+            </div>
+            <div class="nav-auth">
+                <button class="btn btn-primary" id="connect-wallet">
+                    <i class="fas fa-wallet"></i>
+                    <span id="wallet-text">Connect Wallet</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Home Page -->
+        <div id="home-page" class="page active">
+            <!-- Hero Section -->
+            <section class="hero">
+                <div class="hero-content">
+                    <h1 class="hero-title">Welcome to <span class="gradient-text">Dobi</span></h1>
+                    <p class="hero-subtitle">Connect your IoT devices to Aeternity blockchain with ease</p>
+                    <div class="hero-buttons">
+                        <button class="btn btn-primary btn-large" id="hero-create-btn">
+                            <i class="fas fa-plus"></i>
+                            Create New Dobi Device
+                        </button>
+                        <button class="btn btn-secondary btn-large" id="hero-devices-btn">
+                            <i class="fas fa-list"></i>
+                            View All Devices
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats Section -->
+            <section class="stats">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <i class="fas fa-cube"></i>
+                        <h3>Total Devices</h3>
+                        <p id="total-devices">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-network-wired"></i>
+                        <h3>Active Connections</h3>
+                        <p id="active-connections">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-coins"></i>
+                        <h3>Total Transactions</h3>
+                        <p id="total-transactions">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <i class="fas fa-wallet"></i>
+                        <h3>Wallet Balance</h3>
+                        <p id="wallet-balance">0 AE</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Assets Section -->
+            <section class="recent-section">
+                <h2>Recent Devices</h2>
+                <div id="recent-devices" class="devices-grid">
+                    <!-- Recent devices will be loaded here -->
+                </div>
+                <div class="recent-actions">
+                    <button class="btn btn-primary" id="recent-create-btn">
+                        <i class="fas fa-plus"></i>
+                        Create Device
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Devices Page -->
+        <div id="devices-page" class="page">
+            <div class="page-header">
+                <h2>All Devices</h2>
+                <button class="btn btn-primary" id="devices-create-btn">
+                    <i class="fas fa-plus"></i>
+                    Create New Device
+                </button>
+            </div>
+            <div id="devices-list" class="devices-grid">
+                <!-- All devices will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Create Device Page -->
+        <div id="create-page" class="page">
+            <div class="page-header">
+                <button class="btn btn-secondary" id="create-back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Back
+                </button>
+                <h2>Create New Dobi Device</h2>
+            </div>
+            <form id="create-device-form" class="device-form">
+                <!-- Initial 3 fields -->
+                <div class="form-group">
+                    <label for="device-id">Device ID</label>
+                    <input type="text" id="device-id" name="device_id" placeholder="Device_001" required>
+                    <div class="error-message"></div>
+                    <div class="success-message"></div>
+                    <div class="pending-message"></div>
+                </div>
+                <div class="form-group">
+                    <label for="device-name">Device Name</label>
+                    <input type="text" id="device-name" name="name" placeholder="My IoT Device" required>
+                    <div class="error-message"></div>
+                    <div class="success-message"></div>
+                    <div class="pending-message"></div>
+                </div>
+                <div class="form-group">
+                    <label for="device-type">Device Type</label>
+                    <div class="device-type-selector">
+                        <button type="button" class="device-type-btn" data-type="sensor">
+                            <i class="fas fa-thermometer-half"></i>
+                            <span>Sensor</span>
+                        </button>
+                        <button type="button" class="device-type-btn" data-type="actuator">
+                            <i class="fas fa-cog"></i>
+                            <span>Actuator</span>
+                        </button>
+                        <button type="button" class="device-type-btn" data-type="gateway">
+                            <i class="fas fa-wifi"></i>
+                            <span>Gateway</span>
+                        </button>
+                    </div>
+                    <div class="error-message"></div>
+                    <div class="success-message"></div>
+                    <div class="pending-message"></div>
+                </div>
+
+                <!-- Additional fields (hidden initially) -->
+                <div id="additional-fields" class="additional-fields">
+                    <div class="form-group">
+                        <label for="device-description">Description</label>
+                        <textarea id="device-description" name="description" rows="3" placeholder="IoT device for monitoring and control" required></textarea>
+                        <div class="error-message"></div>
+                        <div class="success-message"></div>
+                        <div class="pending-message"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-location">Location</label>
+                        <input type="text" id="device-location" name="location" placeholder="123 Main Street, Downtown" required>
+                        <div class="error-message"></div>
+                        <div class="success-message"></div>
+                        <div class="pending-message"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-status">Status</label>
+                        <select id="device-status" name="status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="maintenance">Maintenance</option>
+                        </select>
+                        <div class="error-message"></div>
+                        <div class="success-message"></div>
+                        <div class="pending-message"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-data-url">Data URL (Optional)</label>
+                        <input type="url" id="device-data-url" name="data_url" placeholder="https://api.example.com/data">
+                        <div class="error-message"></div>
+                        <div class="success-message"></div>
+                        <div class="pending-message"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-control-url">Control URL (Optional)</label>
+                        <input type="url" id="device-control-url" name="control_url" placeholder="https://api.example.com/control">
+                        <div class="error-message"></div>
+                        <div class="success-message"></div>
+                        <div class="pending-message"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="device-log-url">Log URL (Optional)</label>
+                        <input type="url" id="device-log-url" name="log_url" placeholder="https://api.example.com/logs">
+                        <div class="error-message"></div>
+                        <div class="success-message"></div>
+                        <div class="pending-message"></div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-create-device" disabled>
+                        <i class="fas fa-save"></i>
+                        Create Device
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Transactions Page -->
+        <div id="transactions-page" class="page">
+            <div class="page-header">
+                <button class="btn btn-secondary" id="transactions-back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Back
+                </button>
+                <h2>Recent Transactions</h2>
+            </div>
+            <div id="transactions-list" class="transactions-list">
+                <!-- Transactions will be loaded here -->
+            </div>
+            <div class="load-more">
+                <button class="btn btn-secondary" id="load-more-transactions">
+                    <i class="fas fa-sync"></i>
+                    Load More
+                </button>
+            </div>
+        </div>
+
+        <!-- Device Detail Page -->
+        <div id="device-detail-page" class="page">
+            <div class="page-header">
+                <button class="btn btn-secondary" id="device-detail-back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Back
+                </button>
+                <h2 id="device-detail-title">Device Details</h2>
+            </div>
+            
+            <div class="device-detail-content">
+                <!-- Device Summary Section -->
+                <div class="device-summary-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-info-circle"></i> Device Summary</h3>
+                    </div>
+                    <div class="device-summary-card">
+                        <h4><i class="fas fa-info-circle"></i> Basic Information</h4>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <label>Device ID</label>
+                                <span id="summary-device-id">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Status</label>
+                                <span id="summary-status" class="status-badge">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Location</label>
+                                <span id="summary-location">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Owner Address</label>
+                                <span id="summary-owner" class="address-text">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Type</label>
+                                <span id="summary-type">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Description</label>
+                                <span id="summary-description">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Device URLs Information -->
+                    <div class="device-summary-card">
+                        <h4><i class="fas fa-link"></i> Device URLs</h4>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <label>Data URL</label>
+                                <span id="summary-data-url" class="url-text">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Control URL</label>
+                                <span id="summary-control-url" class="url-text">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Log URL</label>
+                                <span id="summary-log-url" class="url-text">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Blockchain Information -->
+                    <div class="summary-subsection">
+                        <h4><i class="fas fa-link"></i> Blockchain</h4>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <label>Wallet Balance (AE)</label>
+                                <span id="summary-wallet-ae">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Network</label>
+                                <span id="summary-network">Aeternity Testnet</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Contract Address</label>
+                                <span id="summary-contract-address" class="address-text">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Device Data Section -->
+                    <div class="summary-subsection">
+                        <h4><i class="fas fa-chart-line"></i> Device Data</h4>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <label>Last Update</label>
+                                <span id="summary-last-update">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Data Points</label>
+                                <span id="summary-data-points">-</span>
+                            </div>
+                            <div class="summary-item">
+                                <label>Uptime</label>
+                                <span id="summary-uptime">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payments Stream (mock) -->
+                    <div class="summary-subsection">
+                        <div class="section-header">
+                            <h3><i class="fas fa-receipt"></i> Payments Stream (mock)</h3>
+                            <div class="hint">Incoming/outgoing payments for this station (simulated)</div>
+                        </div>
+
+                        <div class="payments-toolbar" style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+                            <button class="btn btn-sm btn-secondary" id="btn-pause-payments"><i class="fas fa-pause"></i> Pause</button>
+                            <button class="btn btn-sm btn-secondary" id="btn-resume-payments"><i class="fas fa-play"></i> Resume</button>
+                            <span id="payments-status" style="font-size:12px; opacity:.8;">live</span>
+                        </div>
+
+                        <div id="payments-feed" class="logs-list" style="max-height:260px; overflow:auto; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px;">
+                            <!-- payment items will render here -->
+                        </div>
+                    </div>
+
+                    <!-- Agent Session (Auto) -->
+                    <div class="summary-subsection">
+                        <div class="section-header">
+                            <h3><i class="fas fa-robot"></i> Agent Session (Auto)</h3>
+                            <div class="hint">The charger orchestrates the session and settles payment automatically</div>
+                        </div>
+
+                        <div class="device-summary-card">
+                            <div class="summary-grid">
+                                <div class="summary-item">
+                                    <label>Target kWh</label>
+                                    <input id="agent-kwh" type="number" min="1" step="1" value="12" />
+                                </div>
+                                <div class="summary-item">
+                                    <label>Rate (AE/kWh)</label>
+                                    <input id="agent-tariff" type="number" min="0.01" step="0.01" value="0.12" />
+                                </div>
+                                <div class="summary-item">
+                                    <label>Utility Address (AE)</label>
+                                    <input id="agent-utility" type="text" placeholder="ak_utility_address..." />
+                                </div>
+                                <div class="summary-item">
+                                    <label>Estimated Total (AE)</label>
+                                    <span id="agent-total">1.44</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Agente</label>
+                                    <div style="display:flex; gap:10px; align-items:center;">
+                                        <input id="agent-toggle" type="checkbox" checked />
+                                        <span>Auto settlement ON</span>
+                                    </div>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Status</label>
+                                    <span id="agent-status">idle</span>
+                                </div>
+                            </div>
+
+                            <!-- Session Progress -->
+                            <div style="margin-top:14px;">
+                                <div id="agent-progress-wrap" style="background:rgba(255,255,255,.08); height:10px; border-radius:999px; overflow:hidden;">
+                                    <div id="agent-progress-bar" style="height:10px; width:0%; background:linear-gradient(90deg,#00E5FF,#7C4DFF);"></div>
+                                </div>
+                                <div id="agent-progress-text" style="font-size:12px; opacity:.8; margin-top:6px;">0%</div>
+                            </div>
+
+                            <div class="form-actions" style="margin-top:12px; display:flex; gap:8px;">
+                                <button class="btn btn-secondary" id="agent-arrival"><i class="fas fa-car"></i> Simulate Vehicle Arrival</button>
+                                <button class="btn btn-secondary" id="agent-fund"><i class="fas fa-coins"></i> Fund 5 AE</button>
+                                <button class="btn btn-secondary" id="agent-reset"><i class="fas fa-rotate-left"></i> Reset</button>
+                            </div>
+
+                            <!-- Session Events -->
+                            <div style="margin-top:14px;">
+                                <h4 style="margin:0 0 8px 0;"><i class="fas fa-stream"></i> Session Events</h4>
+                                <div id="session-events" class="logs-list" style="max-height:160px; overflow:auto; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px;">
+                                    <!-- events -->
+                                </div>
+                            </div>
+
+                            <!-- History -->
+                            <div style="margin-top:14px;">
+                                <h4 style="margin:0 0 8px 0;"><i class="fas fa-clock-rotate-left"></i> Session History</h4>
+                                <div id="session-history" class="logs-list" style="max-height:160px; overflow:auto; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px;">
+                                    <!-- history rows -->
+                                </div>
+                            </div>
+
+                            <p style="font-size:12px; opacity:.75; margin-top:8px;">
+                                Note: 100% visual mock. Later we will connect automatic payment to the smart contract; here we only simulate the Station → Utility settlement.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Device Logs Section -->
+                <div class="device-logs-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-list-alt"></i> Device Logs</h3>
+                        <button class="btn btn-sm btn-primary" id="refresh-device-logs">
+                            <i class="fas fa-sync"></i>
+                            Refresh
+                        </button>
+                    </div>
+                    <div class="device-logs-container">
+                        <div id="device-logs-list" class="logs-list">
+                            <!-- Logs will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dobi Bot Interface Section -->
+                <div class="dobi-bot-section">
+                    <div class="section-header">
+                        <div class="dobi-header">
+                            <img src="images/dobi-logo2.png" alt="Dobi Logo" class="dobi-logo-small">
+                            <h3>Dobi Assistant</h3>
+                        </div>
+                    </div>
+                    <div class="bot-interface">
+                        <div class="bot-messages" id="bot-messages">
+                            <div class="bot-message">
+                                <div class="bot-avatar">
+                                    <img src="images/dobi-logo2.png" alt="Dobi Logo" class="bot-avatar-img">
+                                </div>
+                                <div class="message-content">
+                                    <p>Hello! I'm Dobi, your IoT device assistant. How can I help you today?</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bot-input-container">
+                            <input type="text" id="bot-input" placeholder="Ask Dobi anything about this device..." />
+                            <button class="btn btn-primary" id="send-bot-message">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="loading-spinner hidden">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+
+    <!-- Scripts -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
