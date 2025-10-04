@@ -179,17 +179,26 @@ body::after {
 }
 
 .gradient-text {
-    background: linear-gradient(135deg, #00ffff 0%, #8a2be2 50%, #00ff7f 100%);
+    background: linear-gradient(135deg, #0AF1D8 0%, #06C2FF 25%, #9B7BFF 50%, #B995FF 75%, #FF6B9D 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
-    animation: textGlow 2s ease-in-out infinite alternate;
+    background-size: 200% 200%;
+    animation: textGlow 3s ease-in-out infinite alternate, gradientShift 4s ease-in-out infinite;
+    text-shadow: 0 0 40px rgba(10, 241, 216, 0.4), 0 0 80px rgba(155, 123, 255, 0.3);
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 @keyframes textGlow {
     0% { filter: brightness(1); }
     100% { filter: brightness(1.2); }
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 .nav-menu {
