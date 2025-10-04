@@ -1,47 +1,72 @@
 @compiler >= 6
 
-contract AIPaymentManager =
+// ============================================
+// CONTRATO: CARGADOR PAGA POR ELECTRICIDAD CONSUMIDA
+// El cargador (operado por IA) paga automáticamente al proveedor eléctrico
+// ============================================
+
+contract ChargerElectricityPayment =
 
   // ============================================
   // ESTRUCTURAS DE DATOS
   // ============================================
 
-  record agent_info = {
-    name: string,
-    is_active: bool,
+  record charger_info = {
+    id: string,
+    operator: address,
+    location: string,
     balance: int,
-    created_at: int,
-    total_spent: int }
+    total_kwh_consumed: int,
+    total_paid: int,
+    is_active: bool,
+    created_at: int }
 
-  record payment = {
+  record electricity_provider = {
+    id: string,
+    provider_address: address,
+    name: string,
+    price_per_kwh: int,
+    total_kwh_supplied: int,
+    total_revenue: int,
+    is_active: bool }
+
+  record consumption_session = {
     id: int,
-    from_agent: address,
-    to_account: address,
-    amount: int,
-    asset_id: string,
-    category: payment_category,
-    timestamp: int,
+    charger_id: string,
+    provider_id: string,
+    start_time: int,
+    end_time: option(int),
+    kwh_consumed: int,
+    price_per_kwh: int,
+    total_cost: int,
+    last_reading_time: int,
+    status: consumption_status,
+    oracle_id: oracle(string, int),
     metadata: string }
 
-  datatype payment_category = 
-    | ComputeCost
-    | StorageCost
-    | APICost
-    | NetworkCost
-    | MaintenanceCost
-    | Other
+  datatype consumption_status =
+    | Active
+    | Completed
+    | Cancelled
 
-  record asset = {
-    id: string,
-    owner_agent: address,
-    total_spent: int,
-    payment_count: int,
-    last_payment: int,
-    is_active: bool }
+  record payment_record = {
+    id: int,
+    session_id: int,
+    charger_id: string,
+    provider_address: address,
+    amount: int,
+    kwh_amount: int,
+    timestamp: int,
+    payment_type: payment_type }
+
+  datatype payment_type =
+    | StreamingPayment    // Pago continuo cada X segundos
+    | FinalPayment        // Pago final al terminar sesión
+    | TopUpPayment        // Recarga de balance
 
   record alert = {
     id: int,
-    agent: address,
+    charger_id: string,
     alert_type: alert_type,
     message: string,
     timestamp: int,
@@ -49,114 +74,61 @@ contract AIPaymentManager =
 
   datatype alert_type =
     | LowBalance
-    | DailyLimitReached
-    | UnusualSpending
-    | AssetInactive
+    | HighConsumption
+    | PaymentFailed
+    | ProviderOffline
 
-  record thresholds = {
-    min_balance_alert: int,
-    daily_limit: int }
-
-  record agent_summary = {
-    info: agent_info,
-    total_payments: int,
-    average_payment: int,
-    balance: int }
-
-  record category_breakdown = {
-    compute: int,
-    storage: int,
-    api: int,
-    network: int,
-    maintenance: int,
-    other: int }
-
-  record contract_stats = {
-    total_agents: int,
-    total_payments: int,
-    total_assets: int,
-    is_paused: bool,
-    total_volume: int }
-
-  record streaming_payment = {
-    id: int,
-    agent: address,
-    recipient: address,
-    asset_id: string,
-    rate_per_second: int,
-    start_time: int,
-    end_time: option(int),
-    total_paid: int,
-    last_claim_time: int,
-    is_active: bool,
-    metadata: string }
-
-  record oracle_payment = {
-    id: int,
-    agent: address,
-    recipient: address,
-    asset_id: string,
-    oracle_id: oracle(string, int),
-    oracle_query: string,
-    multiplier: int,
-    min_payment: int,
-    max_payment: int,
-    last_check_time: int,
-    total_paid: int,
-    is_active: bool }
+  record dynamic_pricing = {
+    provider_id: string,
+    base_price: int,
+    peak_multiplier: int,
+    off_peak_multiplier: int,
+    peak_hours: list(int) }
 
   record state = {
     owner: address,
-    ai_agents: map(address, agent_info),
-    authorized_operators: map(address, bool),
-    paused: bool,
+    
+    // Cargadores (operados por IA)
+    chargers: map(string, charger_info),
+    operator_chargers: map(address, list(string)),
+    
+    // Proveedores de electricidad
+    providers: map(string, electricity_provider),
+    
+    // Sesiones de consumo
+    sessions: map(int, consumption_session),
+    session_counter: int,
+    charger_sessions: map(string, list(int)),
     
     // Pagos
-    payments: map(int, payment),
+    payments: map(int, payment_record),
     payment_counter: int,
-    
-    // Activos
-    assets: map(string, asset),
-    
-    // Límites y seguridad
-    agent_thresholds: map(address, thresholds),
-    daily_spent: map(address, int),
-    last_reset_day: map(address, int),
     
     // Alertas
     alerts: map(int, alert),
     alert_counter: int,
     
-    // Índices para queries
-    agent_payments: map(address, list(int)),
-    asset_payments: map(string, list(int)),
+    // Precios dinámicos
+    dynamic_pricing: map(string, dynamic_pricing),
     
-    // Streaming payments
-    streaming_payments: map(int, streaming_payment),
-    streaming_counter: int,
-    agent_streams: map(address, list(int)),
-    
-    // Oracle payments
-    oracle_payments: map(int, oracle_payment),
-    oracle_counter: int,
-    agent_oracles: map(address, list(int)),
-    
-    // Estadísticas globales
-    total_volume: int }
+    // Configuración
+    paused: bool,
+    min_balance_threshold: int,
+    payment_interval: int }
 
   // ============================================
   // EVENTOS
   // ============================================
 
   datatype event =
-    | PaymentProcessed(int, address, address, int, string)
-    | AgentRegistered(address, string)
-    | AgentFunded(address, int)
-    | AlertCreated(int, address, alert_type, string)
-    | EmergencyPause(address)
-    | ContractUnpaused(address)
-    | DailyLimitExceeded(address, int)
-    | AgentDeactivated(address)
+    | ChargerRegistered(string, address)
+    | ProviderRegistered(string, address, int)
+    | ConsumptionStarted(int, string, string, int)
+    | ConsumptionUpdate(int, int, int)
+    | ConsumptionEnded(int, int, int)
+    | PaymentProcessed(int, string, address, int, int)
+    | AlertCreated(int, string, alert_type)
+    | BalanceRefilled(string, int)
 
   // ============================================
   // INICIALIZACIÓN
@@ -164,306 +136,336 @@ contract AIPaymentManager =
 
   entrypoint init() : state = {
     owner = Call.caller,
-    ai_agents = {},
-    authorized_operators = {},
-    paused = false,
+    chargers = {},
+    operator_chargers = {},
+    providers = {},
+    sessions = {},
+    session_counter = 0,
+    charger_sessions = {},
     payments = {},
     payment_counter = 0,
-    assets = {},
-    agent_thresholds = {},
-    daily_spent = {},
-    last_reset_day = {},
     alerts = {},
     alert_counter = 0,
-    agent_payments = {},
-    asset_payments = {},
-    streaming_payments = {},
-    streaming_counter = 0,
-    agent_streams = {},
-    oracle_payments = {},
-    oracle_counter = 0,
-    agent_oracles = {},
-    total_volume = 0 }
+    dynamic_pricing = {},
+    paused = false,
+    min_balance_threshold = 100,
+    payment_interval = 5 }
 
   // ============================================
-  // MODIFICADORES Y VALIDACIONES
+  // GESTIÓN DE CARGADORES
   // ============================================
 
-  function require_owner() =
-    require(Call.caller == state.owner, "NOT_OWNER")
-
-  function require_not_paused() =
-    require(!state.paused, "CONTRACT_PAUSED")
-
-  function require_authorized() =
-    require(
-      Call.caller == state.owner || 
-      Map.lookup_default(Call.caller, state.authorized_operators, false),
-      "NOT_AUTHORIZED")
-
-  function is_agent_registered(agent: address) : bool =
-    Map.member(agent, state.ai_agents)
-
-  function is_agent_active(agent: address) : bool =
-    switch(Map.lookup(agent, state.ai_agents))
-      None => false
-      Some(info) => info.is_active
-
-  function get_current_day() : int =
-    Chain.timestamp / 86400
-
-  // ============================================
-  // GESTIÓN DE AUTORIZACIÓN
-  // ============================================
-
-  stateful entrypoint add_operator(operator: address) =
-    require_owner()
-    put(state{ authorized_operators[operator] = true })
-
-  stateful entrypoint remove_operator(operator: address) =
-    require_owner()
-    put(state{ authorized_operators = Map.delete(operator, state.authorized_operators) })
-
-  entrypoint is_operator(operator: address) : bool =
-    Map.lookup_default(operator, state.authorized_operators, false)
-
-  // ============================================
-  // PAUSAS DE EMERGENCIA
-  // ============================================
-
-  stateful entrypoint emergency_pause() =
-    require_owner()
-    put(state{ paused = true })
-    Chain.event(EmergencyPause(Call.caller))
-
-  stateful entrypoint unpause() =
-    require_owner()
-    put(state{ paused = false })
-    Chain.event(ContractUnpaused(Call.caller))
-
-  entrypoint is_paused() : bool =
-    state.paused
-
-  // ============================================
-  // GESTIÓN DE AGENTES
-  // ============================================
-
-  stateful entrypoint register_agent(
-    agent_address: address,
-    name: string,
+  stateful entrypoint register_charger(
+    charger_id: string,
+    location: string,
     initial_balance: int) =
     
-    require_authorized()
-    require(!is_agent_registered(agent_address), "AGENT_ALREADY_REGISTERED")
+    require(!Map.member(charger_id, state.chargers), "CHARGER_ALREADY_EXISTS")
     require(initial_balance >= 0, "INVALID_BALANCE")
     
-    let agent = {
-      name = name,
-      is_active = true,
+    let charger = {
+      id = charger_id,
+      operator = Call.caller,
+      location = location,
       balance = initial_balance,
-      created_at = Chain.timestamp,
-      total_spent = 0 }
+      total_kwh_consumed = 0,
+      total_paid = 0,
+      is_active = true,
+      created_at = Chain.timestamp }
     
-    // Establecer thresholds por defecto
-    let default_thresholds = {
-      min_balance_alert = 100,
-      daily_limit = 10000 }
+    let operator_list = Map.lookup_default(Call.caller, state.operator_chargers, [])
     
     put(state{
-      ai_agents[agent_address] = agent,
-      agent_thresholds[agent_address] = default_thresholds,
-      daily_spent[agent_address] = 0,
-      last_reset_day[agent_address] = get_current_day(),
-      agent_payments[agent_address] = [] })
+      chargers[charger_id] = charger,
+      operator_chargers[Call.caller] = charger_id :: operator_list })
     
-    Chain.event(AgentRegistered(agent_address, name))
+    Chain.event(ChargerRegistered(charger_id, Call.caller))
 
-  payable stateful entrypoint fund_agent(agent: address) =
-    require_authorized()
-    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
+  payable stateful entrypoint fund_charger(charger_id: string) =
+    require(Map.member(charger_id, state.chargers), "CHARGER_NOT_FOUND")
     require(Call.value > 0, "NO_FUNDS")
     
-    let current_agent = state.ai_agents[agent]
-    let updated_agent = current_agent{ 
-      balance = current_agent.balance + Call.value }
+    let charger = state.chargers[charger_id]
+    require(Call.caller == charger.operator || Call.caller == state.owner, "NOT_AUTHORIZED")
     
-    put(state{ ai_agents[agent] = updated_agent })
-    Chain.event(AgentFunded(agent, Call.value))
+    let updated_charger = charger{ balance = charger.balance + Call.value }
+    put(state{ chargers[charger_id] = updated_charger })
+    
+    Chain.event(BalanceRefilled(charger_id, Call.value))
 
-  stateful entrypoint withdraw_agent_funds(agent: address, amount: int) =
-    require_owner()
-    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
-    
-    let current_agent = state.ai_agents[agent]
-    require(current_agent.balance >= amount, "INSUFFICIENT_BALANCE")
-    
-    let updated_agent = current_agent{ 
-      balance = current_agent.balance - amount }
-    
-    put(state{ ai_agents[agent] = updated_agent })
-    Chain.spend(Call.caller, amount)
+  entrypoint get_charger_info(charger_id: string) : option(charger_info) =
+    Map.lookup(charger_id, state.chargers)
 
-  stateful entrypoint deactivate_agent(agent: address) =
-    require_authorized()
-    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
-    
-    let current_agent = state.ai_agents[agent]
-    let updated_agent = current_agent{ is_active = false }
-    
-    put(state{ ai_agents[agent] = updated_agent })
-    Chain.event(AgentDeactivated(agent))
-
-  stateful entrypoint reactivate_agent(agent: address) =
-    require_authorized()
-    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
-    
-    let current_agent = state.ai_agents[agent]
-    let updated_agent = current_agent{ is_active = true }
-    
-    put(state{ ai_agents[agent] = updated_agent })
+  entrypoint get_charger_balance(charger_id: string) : int =
+    switch(Map.lookup(charger_id, state.chargers))
+      None => 0
+      Some(charger) => charger.balance
 
   // ============================================
-  // GESTIÓN DE LÍMITES Y THRESHOLDS
+  // GESTIÓN DE PROVEEDORES DE ELECTRICIDAD
   // ============================================
 
-  stateful entrypoint set_agent_thresholds(
-    agent: address,
-    min_balance: int,
-    daily_limit: int) =
+  stateful entrypoint register_provider(
+    provider_id: string,
+    name: string,
+    price_per_kwh: int) =
     
-    require_authorized()
-    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
+    require(!Map.member(provider_id, state.providers), "PROVIDER_ALREADY_EXISTS")
+    require(price_per_kwh > 0, "INVALID_PRICE")
     
-    let thresholds = {
-      min_balance_alert = min_balance,
-      daily_limit = daily_limit }
+    let provider = {
+      id = provider_id,
+      provider_address = Call.caller,
+      name = name,
+      price_per_kwh = price_per_kwh,
+      total_kwh_supplied = 0,
+      total_revenue = 0,
+      is_active = true }
     
-    put(state{ agent_thresholds[agent] = thresholds })
+    put(state{ providers[provider_id] = provider })
+    Chain.event(ProviderRegistered(provider_id, Call.caller, price_per_kwh))
 
-  entrypoint get_agent_thresholds(agent: address) : thresholds =
-    Map.lookup_default(
-      agent,
-      state.agent_thresholds,
-      { min_balance_alert = 100, daily_limit = 10000 })
-
-  function check_and_reset_daily_limit(agent: address) : int =
-    let current_day = get_current_day()
-    let last_day = Map.lookup_default(agent, state.last_reset_day, 0)
+  stateful entrypoint set_dynamic_pricing(
+    provider_id: string,
+    base_price: int,
+    peak_multiplier: int,
+    off_peak_multiplier: int,
+    peak_hours: list(int)) =
     
-    if(current_day > last_day)
-      0  // Nuevo día, resetear
-    else
-      Map.lookup_default(agent, state.daily_spent, 0)
+    require(Map.member(provider_id, state.providers), "PROVIDER_NOT_FOUND")
+    let provider = state.providers[provider_id]
+    require(Call.caller == provider.provider_address, "NOT_PROVIDER")
+    
+    let pricing = {
+      provider_id = provider_id,
+      base_price = base_price,
+      peak_multiplier = peak_multiplier,
+      off_peak_multiplier = off_peak_multiplier,
+      peak_hours = peak_hours }
+    
+    put(state{ dynamic_pricing[provider_id] = pricing })
 
-  function can_spend(agent: address, amount: int) : bool =
-    let thresholds = get_agent_thresholds(agent)
-    let current_spent = check_and_reset_daily_limit(agent)
-    current_spent + amount =< thresholds.daily_limit
+  function get_current_price(provider_id: string) : int =
+    let provider = state.providers[provider_id]
+    
+    switch(Map.lookup(provider_id, state.dynamic_pricing))
+      None => provider.price_per_kwh
+      Some(pricing) =>
+        let current_hour = (Chain.timestamp / 3600) mod 24
+        let is_peak = List.contains(current_hour, pricing.peak_hours)
+        
+        if(is_peak)
+          (pricing.base_price * pricing.peak_multiplier) / 100
+        else
+          (pricing.base_price * pricing.off_peak_multiplier) / 100
+
+  entrypoint get_provider_info(provider_id: string) : option(electricity_provider) =
+    Map.lookup(provider_id, state.providers)
+
+  // ============================================
+  // SESIONES DE CONSUMO
+  // ============================================
+
+  stateful entrypoint start_consumption(
+    charger_id: string,
+    provider_id: string,
+    oracle_id: oracle(string, int),
+    estimated_kwh: int,
+    metadata: string) : int =
+    
+    require(!state.paused, "CONTRACT_PAUSED")
+    require(Map.member(charger_id, state.chargers), "CHARGER_NOT_FOUND")
+    require(Map.member(provider_id, state.providers), "PROVIDER_NOT_FOUND")
+    
+    let charger = state.chargers[charger_id]
+    require(charger.is_active, "CHARGER_NOT_ACTIVE")
+    
+    let provider = state.providers[provider_id]
+    require(provider.is_active, "PROVIDER_NOT_ACTIVE")
+    
+    let current_price = get_current_price(provider_id)
+    let estimated_cost = estimated_kwh * current_price
+    
+    require(charger.balance >= estimated_cost, "INSUFFICIENT_BALANCE")
+    
+    let session_id = state.session_counter + 1
+    let session = {
+      id = session_id,
+      charger_id = charger_id,
+      provider_id = provider_id,
+      start_time = Chain.timestamp,
+      end_time = None,
+      kwh_consumed = 0,
+      price_per_kwh = current_price,
+      total_cost = 0,
+      last_reading_time = Chain.timestamp,
+      status = Active,
+      oracle_id = oracle_id,
+      metadata = metadata }
+    
+    let charger_session_list = Map.lookup_default(charger_id, state.charger_sessions, [])
+    
+    put(state{
+      sessions[session_id] = session,
+      session_counter = session_id,
+      charger_sessions[charger_id] = session_id :: charger_session_list })
+    
+    Chain.event(ConsumptionStarted(session_id, charger_id, provider_id, current_price))
+    
+    session_id
+
+  stateful entrypoint update_consumption_reading(
+    session_id: int,
+    kwh_reading: int) =
+    
+    require(Map.member(session_id, state.sessions), "SESSION_NOT_FOUND")
+    
+    let session = state.sessions[session_id]
+    require(session.status == Active, "SESSION_NOT_ACTIVE")
+    require(kwh_reading >= session.kwh_consumed, "INVALID_READING")
+    
+    let provider = state.providers[session.provider_id]
+    require(Call.caller == provider.provider_address || Call.caller == state.owner, "NOT_AUTHORIZED")
+    
+    let kwh_increment = kwh_reading - session.kwh_consumed
+    
+    if(kwh_increment > 0)
+      let cost_increment = kwh_increment * session.price_per_kwh
+      
+      let charger = state.chargers[session.charger_id]
+      
+      if(charger.balance >= cost_increment)
+        // Procesar pago
+        process_electricity_payment(session_id, kwh_increment, cost_increment)
+        
+        let updated_session = session{
+          kwh_consumed = kwh_reading,
+          total_cost = session.total_cost + cost_increment,
+          last_reading_time = Chain.timestamp }
+        
+        put(state{ sessions[session_id] = updated_session })
+        
+        Chain.event(ConsumptionUpdate(session_id, kwh_reading, cost_increment))
+        
+        // Check balance alert
+        check_charger_balance(session.charger_id)
+      else
+        // Balance insuficiente, crear alerta y pausar
+        create_alert_internal(session.charger_id, LowBalance, "Insufficient balance to continue")
+        stop_consumption_internal(session_id, kwh_reading)
+
+  stateful entrypoint stop_consumption(session_id: int, final_kwh: int) =
+    require(Map.member(session_id, state.sessions), "SESSION_NOT_FOUND")
+    
+    let session = state.sessions[session_id]
+    require(session.status == Active, "SESSION_NOT_ACTIVE")
+    
+    let charger = state.chargers[session.charger_id]
+    let provider = state.providers[session.provider_id]
+    
+    require(
+      Call.caller == charger.operator || 
+      Call.caller == provider.provider_address ||
+      Call.caller == state.owner,
+      "NOT_AUTHORIZED")
+    
+    stop_consumption_internal(session_id, final_kwh)
+
+  stateful function stop_consumption_internal(session_id: int, final_kwh: int) =
+    let session = state.sessions[session_id]
+    
+    // Procesar pago final si hay diferencia
+    if(final_kwh > session.kwh_consumed)
+      let kwh_increment = final_kwh - session.kwh_consumed
+      let cost_increment = kwh_increment * session.price_per_kwh
+      
+      let charger = state.chargers[session.charger_id]
+      if(charger.balance >= cost_increment)
+        process_electricity_payment(session_id, kwh_increment, cost_increment)
+    
+    let final_cost = session.total_cost + ((final_kwh - session.kwh_consumed) * session.price_per_kwh)
+    
+    let updated_session = session{
+      status = Completed,
+      end_time = Some(Chain.timestamp),
+      kwh_consumed = final_kwh,
+      total_cost = final_cost }
+    
+    // Actualizar estadísticas del cargador
+    let charger = state.chargers[session.charger_id]
+    let updated_charger = charger{
+      total_kwh_consumed = charger.total_kwh_consumed + final_kwh,
+      total_paid = charger.total_paid + final_cost }
+    
+    // Actualizar estadísticas del proveedor
+    let provider = state.providers[session.provider_id]
+    let updated_provider = provider{
+      total_kwh_supplied = provider.total_kwh_supplied + final_kwh,
+      total_revenue = provider.total_revenue + final_cost }
+    
+    put(state{
+      sessions[session_id] = updated_session,
+      chargers[session.charger_id] = updated_charger,
+      providers[session.provider_id] = updated_provider })
+    
+    Chain.event(ConsumptionEnded(session_id, final_kwh, final_cost))
 
   // ============================================
   // PROCESAMIENTO DE PAGOS
   // ============================================
 
-  stateful entrypoint process_payment(
-    agent: address,
-    recipient: address,
-    amount: int,
-    asset_id: string,
-    category: payment_category,
-    metadata: string) : int =
+  stateful function process_electricity_payment(
+    session_id: int,
+    kwh_amount: int,
+    total_amount: int) =
     
-    require_not_paused()
-    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
-    require(is_agent_active(agent), "AGENT_INACTIVE")
-    require(amount > 0, "INVALID_AMOUNT")
+    let session = state.sessions[session_id]
+    let charger = state.chargers[session.charger_id]
+    let provider = state.providers[session.provider_id]
     
-    let current_agent = state.ai_agents[agent]
-    require(current_agent.balance >= amount, "INSUFFICIENT_BALANCE")
+    // Actualizar balance del cargador
+    let updated_charger = charger{ balance = charger.balance - total_amount }
     
-    // Verificar límite diario
-    let current_spent = check_and_reset_daily_limit(agent)
-    let current_day = get_current_day()
-    
-    if(!can_spend(agent, amount))
-      create_alert_internal(agent, DailyLimitReached, "Daily limit exceeded")
-      Chain.event(DailyLimitExceeded(agent, amount))
-      abort("DAILY_LIMIT_EXCEEDED")
+    // Pagar al proveedor
+    Chain.spend(provider.provider_address, total_amount)
     
     // Crear registro de pago
     let payment_id = state.payment_counter + 1
-    let new_payment = {
+    let payment = {
       id = payment_id,
-      from_agent = agent,
-      to_account = recipient,
-      amount = amount,
-      asset_id = asset_id,
-      category = category,
+      session_id = session_id,
+      charger_id = session.charger_id,
+      provider_address = provider.provider_address,
+      amount = total_amount,
+      kwh_amount = kwh_amount,
       timestamp = Chain.timestamp,
-      metadata = metadata }
+      payment_type = StreamingPayment }
     
-    // Actualizar balance del agente
-    let updated_agent = current_agent{
-      balance = current_agent.balance - amount,
-      total_spent = current_agent.total_spent + amount }
-    
-    // Actualizar o crear asset
-    let current_asset = Map.lookup_default(
-      asset_id,
-      state.assets,
-      { id = asset_id,
-        owner_agent = agent,
-        total_spent = 0,
-        payment_count = 0,
-        last_payment = 0,
-        is_active = true })
-    
-    let updated_asset = current_asset{
-      total_spent = current_asset.total_spent + amount,
-      payment_count = current_asset.payment_count + 1,
-      last_payment = Chain.timestamp }
-    
-    // Actualizar índices
-    let agent_payment_list = Map.lookup_default(agent, state.agent_payments, [])
-    let asset_payment_list = Map.lookup_default(asset_id, state.asset_payments, [])
-    
-    // Actualizar daily spent
-    let new_daily_spent = current_spent + amount
-    
-    // Ejecutar transferencia
-    Chain.spend(recipient, amount)
-    
-    // Guardar estado
     put(state{
-      payments[payment_id] = new_payment,
-      payment_counter = payment_id,
-      ai_agents[agent] = updated_agent,
-      assets[asset_id] = updated_asset,
-      agent_payments[agent] = payment_id :: agent_payment_list,
-      asset_payments[asset_id] = payment_id :: asset_payment_list,
-      daily_spent[agent] = new_daily_spent,
-      last_reset_day[agent] = current_day,
-      total_volume = state.total_volume + amount })
+      chargers[session.charger_id] = updated_charger,
+      payments[payment_id] = payment,
+      payment_counter = payment_id })
     
-    // Verificar alertas
-    check_balance_alert(agent, updated_agent.balance)
-    
-    Chain.event(PaymentProcessed(payment_id, agent, recipient, amount, asset_id))
-    
-    payment_id
+    Chain.event(PaymentProcessed(
+      payment_id,
+      session.charger_id,
+      provider.provider_address,
+      total_amount,
+      kwh_amount))
 
   // ============================================
   // SISTEMA DE ALERTAS
   // ============================================
 
   stateful function create_alert_internal(
-    agent: address,
+    charger_id: string,
     alert_type: alert_type,
     message: string) : int =
     
     let alert_id = state.alert_counter + 1
     let new_alert = {
       id = alert_id,
-      agent = agent,
+      charger_id = charger_id,
       alert_type = alert_type,
       message = message,
       timestamp = Chain.timestamp,
@@ -473,420 +475,79 @@ contract AIPaymentManager =
       alerts[alert_id] = new_alert,
       alert_counter = alert_id })
     
-    Chain.event(AlertCreated(alert_id, agent, alert_type, message))
+    Chain.event(AlertCreated(alert_id, charger_id, alert_type))
     alert_id
 
-  function check_balance_alert(agent: address, current_balance: int) =
-    let thresholds = get_agent_thresholds(agent)
-    if(current_balance < thresholds.min_balance_alert)
-      create_alert_internal(agent, LowBalance, "Balance below threshold")
+  function check_charger_balance(charger_id: string) =
+    let charger = state.chargers[charger_id]
+    if(charger.balance < state.min_balance_threshold)
+      create_alert_internal(charger_id, LowBalance, "Balance below threshold")
 
   stateful entrypoint resolve_alert(alert_id: int) =
-    require_authorized()
     require(Map.member(alert_id, state.alerts), "ALERT_NOT_FOUND")
     
-    let current_alert = state.alerts[alert_id]
-    let updated_alert = current_alert{ resolved = true }
-    
+    let alert = state.alerts[alert_id]
+    let updated_alert = alert{ resolved = true }
     put(state{ alerts[alert_id] = updated_alert })
 
-  entrypoint get_alert(alert_id: int) : option(alert) =
-    Map.lookup(alert_id, state.alerts)
-
-  entrypoint get_unresolved_alerts() : list(alert) =
+  entrypoint get_charger_alerts(charger_id: string) : list(alert) =
     let all_alerts = Map.to_list(state.alerts)
-    let unresolved = List.filter(
+    let charger_alerts = List.filter(
       (pair) =>
         let (_, alert) = pair
-        !alert.resolved,
+        alert.charger_id == charger_id && !alert.resolved,
       all_alerts)
-    List.map((pair) => let (_, alert) = pair in alert, unresolved)
+    List.map((pair) => let (_, alert) = pair in alert, charger_alerts)
 
   // ============================================
-  // CONSULTAS DE AGENTES
+  // CONSULTAS
   // ============================================
 
-  entrypoint get_agent_info(agent: address) : option(agent_info) =
-    Map.lookup(agent, state.ai_agents)
+  entrypoint get_session(session_id: int) : option(consumption_session) =
+    Map.lookup(session_id, state.sessions)
 
-  entrypoint get_agent_balance(agent: address) : int =
-    switch(Map.lookup(agent, state.ai_agents))
-      None => 0
-      Some(info) => info.balance
+  entrypoint get_charger_sessions(charger_id: string) : list(consumption_session) =
+    let session_ids = Map.lookup_default(charger_id, state.charger_sessions, [])
+    List.map((id) => state.sessions[id], session_ids)
 
-  entrypoint get_agent_payments(agent: address) : list(payment) =
-    let payment_ids = Map.lookup_default(agent, state.agent_payments, [])
-    List.map((id) => state.payments[id], payment_ids)
+  entrypoint get_active_sessions() : list(consumption_session) =
+    let all_sessions = Map.to_list(state.sessions)
+    let active = List.filter(
+      (pair) =>
+        let (_, session) = pair
+        session.status == Active,
+      all_sessions)
+    List.map((pair) => let (_, session) = pair in session, active)
 
-  entrypoint get_agent_summary(agent: address) : agent_summary =
-    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
-    
-    let agent_info = state.ai_agents[agent]
-    let payment_ids = Map.lookup_default(agent, state.agent_payments, [])
-    let total_payments = List.length(payment_ids)
-    
-    let average = if(total_payments > 0)
-      agent_info.total_spent / total_payments
-    else
-      0
-    
-    { info = agent_info,
-      total_payments = total_payments,
-      average_payment = average,
-      balance = agent_info.balance }
-
-  entrypoint get_agent_spending_by_category(agent: address) : category_breakdown =
-    let payment_ids = Map.lookup_default(agent, state.agent_payments, [])
-    let payments = List.map((id) => state.payments[id], payment_ids)
-    
-    calculate_category_breakdown(payments)
-
-  function calculate_category_breakdown(payments: list(payment)) : category_breakdown =
-    List.foldl(
-      (acc, p) =>
-        switch(p.category)
-          ComputeCost => acc{ compute = acc.compute + p.amount }
-          StorageCost => acc{ storage = acc.storage + p.amount }
-          APICost => acc{ api = acc.api + p.amount }
-          NetworkCost => acc{ network = acc.network + p.amount }
-          MaintenanceCost => acc{ maintenance = acc.maintenance + p.amount }
-          Other => acc{ other = acc.other + p.amount },
-      { compute = 0, storage = 0, api = 0, network = 0, maintenance = 0, other = 0 },
-      payments)
-
-  // ============================================
-  // CONSULTAS DE ACTIVOS
-  // ============================================
-
-  entrypoint get_asset(asset_id: string) : option(asset) =
-    Map.lookup(asset_id, state.assets)
-
-  entrypoint get_asset_payments(asset_id: string) : list(payment) =
-    let payment_ids = Map.lookup_default(asset_id, state.asset_payments, [])
-    List.map((id) => state.payments[id], payment_ids)
-
-  stateful entrypoint deactivate_asset(asset_id: string) =
-    require_authorized()
-    require(Map.member(asset_id, state.assets), "ASSET_NOT_FOUND")
-    
-    let current_asset = state.assets[asset_id]
-    let updated_asset = current_asset{ is_active = false }
-    
-    put(state{ assets[asset_id] = updated_asset })
-
-  // ============================================
-  // CONSULTAS DE PAGOS
-  // ============================================
-
-  entrypoint get_payment(payment_id: int) : option(payment) =
+  entrypoint get_payment(payment_id: int) : option(payment_record) =
     Map.lookup(payment_id, state.payments)
 
-  entrypoint get_total_payments() : int =
-    state.payment_counter
+  entrypoint calculate_estimated_cost(
+    provider_id: string,
+    estimated_kwh: int) : int =
+    let current_price = get_current_price(provider_id)
+    estimated_kwh * current_price
+
+  entrypoint get_operator_chargers(operator: address) : list(charger_info) =
+    let charger_ids = Map.lookup_default(operator, state.operator_chargers, [])
+    List.map((id) => state.chargers[id], charger_ids)
 
   // ============================================
-  // ESTADÍSTICAS GLOBALES
+  // ADMINISTRACIÓN
   // ============================================
 
-  entrypoint get_contract_stats() : contract_stats =
-    { total_agents = Map.size(state.ai_agents),
-      total_payments = state.payment_counter,
-      total_assets = Map.size(state.assets),
-      is_paused = state.paused,
-      total_volume = state.total_volume }
+  stateful entrypoint set_min_balance_threshold(new_threshold: int) =
+    require(Call.caller == state.owner, "NOT_OWNER")
+    require(new_threshold > 0, "INVALID_THRESHOLD")
+    put(state{ min_balance_threshold = new_threshold })
+
+  stateful entrypoint pause_contract() =
+    require(Call.caller == state.owner, "NOT_OWNER")
+    put(state{ paused = true })
+
+  stateful entrypoint unpause_contract() =
+    require(Call.caller == state.owner, "NOT_OWNER")
+    put(state{ paused = false })
 
   entrypoint get_owner() : address =
     state.owner
-
-  entrypoint get_daily_spent(agent: address) : int =
-    let current_spent = check_and_reset_daily_limit(agent)
-    current_spent
-
-  // ============================================
-  // FUNCIONES DE ADMINISTRACIÓN
-  // ============================================
-
-  stateful entrypoint transfer_ownership(new_owner: address) =
-    require_owner()
-    require(new_owner != Call.caller, "SAME_OWNER")
-    put(state{ owner = new_owner })
-
-  payable stateful entrypoint deposit() =
-    require(Call.value > 0, "NO_FUNDS")
-    // Fondos van al contrato para cubrir gas de transferencias
-
-  stateful entrypoint withdraw_contract_balance(amount: int) =
-    require_owner()
-    require(amount > 0, "INVALID_AMOUNT")
-    Chain.spend(Call.caller, amount)
-
-  // ============================================
-  // STREAMING PAYMENTS (Pagos en tiempo real)
-  // ============================================
-
-  stateful entrypoint start_streaming_payment(
-    agent: address,
-    recipient: address,
-    asset_id: string,
-    rate_per_second: int,
-    metadata: string) : int =
-    
-    require_not_paused()
-    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
-    require(is_agent_active(agent), "AGENT_INACTIVE")
-    require(rate_per_second > 0, "INVALID_RATE")
-    
-    let stream_id = state.streaming_counter + 1
-    let new_stream = {
-      id = stream_id,
-      agent = agent,
-      recipient = recipient,
-      asset_id = asset_id,
-      rate_per_second = rate_per_second,
-      start_time = Chain.timestamp,
-      end_time = None,
-      total_paid = 0,
-      last_claim_time = Chain.timestamp,
-      is_active = true,
-      metadata = metadata }
-    
-    let agent_stream_list = Map.lookup_default(agent, state.agent_streams, [])
-    
-    put(state{
-      streaming_payments[stream_id] = new_stream,
-      streaming_counter = stream_id,
-      agent_streams[agent] = stream_id :: agent_stream_list })
-    
-    stream_id
-
-  stateful entrypoint claim_streaming_payment(stream_id: int) =
-    require_not_paused()
-    require(Map.member(stream_id, state.streaming_payments), "STREAM_NOT_FOUND")
-    
-    let stream = state.streaming_payments[stream_id]
-    require(stream.is_active, "STREAM_NOT_ACTIVE")
-    
-    let current_time = Chain.timestamp
-    let time_elapsed = current_time - stream.last_claim_time
-    let amount_due = time_elapsed * stream.rate_per_second
-    
-    require(amount_due > 0, "NO_PAYMENT_DUE")
-    
-    let agent_info = state.ai_agents[stream.agent]
-    require(agent_info.balance >= amount_due, "INSUFFICIENT_BALANCE")
-    
-    // Crear pago regular
-    let payment_id = process_payment_internal(
-      stream.agent,
-      stream.recipient,
-      amount_due,
-      stream.asset_id,
-      ComputeCost,
-      String.concat("Stream #", Int.to_str(stream_id)))
-    
-    // Actualizar stream
-    let updated_stream = stream{
-      total_paid = stream.total_paid + amount_due,
-      last_claim_time = current_time }
-    
-    put(state{ streaming_payments[stream_id] = updated_stream })
-
-  stateful entrypoint stop_streaming_payment(stream_id: int) =
-    require(Map.member(stream_id, state.streaming_payments), "STREAM_NOT_FOUND")
-    
-    let stream = state.streaming_payments[stream_id]
-    require(
-      Call.caller == stream.agent || 
-      Call.caller == state.owner ||
-      Map.lookup_default(Call.caller, state.authorized_operators, false),
-      "NOT_AUTHORIZED")
-    
-    // Hacer último claim antes de cerrar
-    if(stream.is_active)
-      claim_streaming_payment(stream_id)
-    
-    let updated_stream = stream{
-      is_active = false,
-      end_time = Some(Chain.timestamp) }
-    
-    put(state{ streaming_payments[stream_id] = updated_stream })
-
-  entrypoint get_streaming_payment(stream_id: int) : option(streaming_payment) =
-    Map.lookup(stream_id, state.streaming_payments)
-
-  entrypoint calculate_streaming_due(stream_id: int) : int =
-    switch(Map.lookup(stream_id, state.streaming_payments))
-      None => 0
-      Some(stream) =>
-        if(stream.is_active)
-          let time_elapsed = Chain.timestamp - stream.last_claim_time
-          time_elapsed * stream.rate_per_second
-        else
-          0
-
-  entrypoint get_agent_streams(agent: address) : list(streaming_payment) =
-    let stream_ids = Map.lookup_default(agent, state.agent_streams, [])
-    List.map((id) => state.streaming_payments[id], stream_ids)
-
-  // ============================================
-  // ORACLE PAYMENTS (Pagos basados en datos externos)
-  // ============================================
-
-  stateful entrypoint create_oracle_payment(
-    agent: address,
-    recipient: address,
-    asset_id: string,
-    oracle_id: oracle(string, int),
-    oracle_query: string,
-    multiplier: int,
-    min_payment: int,
-    max_payment: int) : int =
-    
-    require_not_paused()
-    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
-    require(is_agent_active(agent), "AGENT_INACTIVE")
-    require(multiplier > 0, "INVALID_MULTIPLIER")
-    
-    let oracle_payment_id = state.oracle_counter + 1
-    let new_oracle_payment = {
-      id = oracle_payment_id,
-      agent = agent,
-      recipient = recipient,
-      asset_id = asset_id,
-      oracle_id = oracle_id,
-      oracle_query = oracle_query,
-      multiplier = multiplier,
-      min_payment = min_payment,
-      max_payment = max_payment,
-      last_check_time = Chain.timestamp,
-      total_paid = 0,
-      is_active = true }
-    
-    let agent_oracle_list = Map.lookup_default(agent, state.agent_oracles, [])
-    
-    put(state{
-      oracle_payments[oracle_payment_id] = new_oracle_payment,
-      oracle_counter = oracle_payment_id,
-      agent_oracles[agent] = oracle_payment_id :: agent_oracle_list })
-    
-    oracle_payment_id
-
-  stateful entrypoint execute_oracle_payment(oracle_payment_id: int, oracle_response: int) =
-    require_not_paused()
-    require(Map.member(oracle_payment_id, state.oracle_payments), "ORACLE_PAYMENT_NOT_FOUND")
-    
-    let oracle_payment = state.oracle_payments[oracle_payment_id]
-    require(oracle_payment.is_active, "ORACLE_PAYMENT_NOT_ACTIVE")
-    
-    // Calcular monto basado en respuesta del oráculo
-    let calculated_amount = oracle_response * oracle_payment.multiplier
-    
-    // Aplicar límites min/max
-    let final_amount = 
-      if(calculated_amount < oracle_payment.min_payment)
-        oracle_payment.min_payment
-      else if(calculated_amount > oracle_payment.max_payment)
-        oracle_payment.max_payment
-      else
-        calculated_amount
-    
-    require(final_amount > 0, "INVALID_PAYMENT_AMOUNT")
-    
-    let agent_info = state.ai_agents[oracle_payment.agent]
-    require(agent_info.balance >= final_amount, "INSUFFICIENT_BALANCE")
-    
-    // Crear pago
-    let payment_id = process_payment_internal(
-      oracle_payment.agent,
-      oracle_payment.recipient,
-      final_amount,
-      oracle_payment.asset_id,
-      Other,
-      String.concat("Oracle Payment #", Int.to_str(oracle_payment_id)))
-    
-    // Actualizar oracle payment
-    let updated_oracle_payment = oracle_payment{
-      total_paid = oracle_payment.total_paid + final_amount,
-      last_check_time = Chain.timestamp }
-    
-    put(state{ oracle_payments[oracle_payment_id] = updated_oracle_payment })
-
-  stateful entrypoint deactivate_oracle_payment(oracle_payment_id: int) =
-    require(Map.member(oracle_payment_id, state.oracle_payments), "ORACLE_PAYMENT_NOT_FOUND")
-    
-    let oracle_payment = state.oracle_payments[oracle_payment_id]
-    require(
-      Call.caller == oracle_payment.agent || 
-      Call.caller == state.owner ||
-      Map.lookup_default(Call.caller, state.authorized_operators, false),
-      "NOT_AUTHORIZED")
-    
-    let updated_oracle_payment = oracle_payment{ is_active = false }
-    put(state{ oracle_payments[oracle_payment_id] = updated_oracle_payment })
-
-  entrypoint get_oracle_payment(oracle_payment_id: int) : option(oracle_payment) =
-    Map.lookup(oracle_payment_id, state.oracle_payments)
-
-  entrypoint get_agent_oracle_payments(agent: address) : list(oracle_payment) =
-    let oracle_ids = Map.lookup_default(agent, state.agent_oracles, [])
-    List.map((id) => state.oracle_payments[id], oracle_ids)
-
-  // ============================================
-  // FUNCIÓN AUXILIAR INTERNA
-  // ============================================
-
-  stateful function process_payment_internal(
-    agent: address,
-    recipient: address,
-    amount: int,
-    asset_id: string,
-    category: payment_category,
-    metadata: string) : int =
-    
-    let current_agent = state.ai_agents[agent]
-    
-    let payment_id = state.payment_counter + 1
-    let new_payment = {
-      id = payment_id,
-      from_agent = agent,
-      to_account = recipient,
-      amount = amount,
-      asset_id = asset_id,
-      category = category,
-      timestamp = Chain.timestamp,
-      metadata = metadata }
-    
-    let updated_agent = current_agent{
-      balance = current_agent.balance - amount,
-      total_spent = current_agent.total_spent + amount }
-    
-    let current_asset = Map.lookup_default(
-      asset_id,
-      state.assets,
-      { id = asset_id,
-        owner_agent = agent,
-        total_spent = 0,
-        payment_count = 0,
-        last_payment = 0,
-        is_active = true })
-    
-    let updated_asset = current_asset{
-      total_spent = current_asset.total_spent + amount,
-      payment_count = current_asset.payment_count + 1,
-      last_payment = Chain.timestamp }
-    
-    let agent_payment_list = Map.lookup_default(agent, state.agent_payments, [])
-    let asset_payment_list = Map.lookup_default(asset_id, state.asset_payments, [])
-    
-    Chain.spend(recipient, amount)
-    
-    put(state{
-      payments[payment_id] = new_payment,
-      payment_counter = payment_id,
-      ai_agents[agent] = updated_agent,
-      assets[asset_id] = updated_asset,
-      agent_payments[agent] = payment_id :: agent_payment_list,
-      asset_payments[asset_id] = payment_id :: asset_payment_list,
-      total_volume = state.total_volume + amount })
-    
-    payment_id
