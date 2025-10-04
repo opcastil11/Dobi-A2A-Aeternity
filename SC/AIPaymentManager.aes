@@ -1,0 +1,892 @@
+@compiler >= 6
+
+contract AIPaymentManager =
+
+  // ============================================
+  // ESTRUCTURAS DE DATOS
+  // ============================================
+
+  record agent_info = {
+    name: string,
+    is_active: bool,
+    balance: int,
+    created_at: int,
+    total_spent: int }
+
+  record payment = {
+    id: int,
+    from_agent: address,
+    to_account: address,
+    amount: int,
+    asset_id: string,
+    category: payment_category,
+    timestamp: int,
+    metadata: string }
+
+  datatype payment_category = 
+    | ComputeCost
+    | StorageCost
+    | APICost
+    | NetworkCost
+    | MaintenanceCost
+    | Other
+
+  record asset = {
+    id: string,
+    owner_agent: address,
+    total_spent: int,
+    payment_count: int,
+    last_payment: int,
+    is_active: bool }
+
+  record alert = {
+    id: int,
+    agent: address,
+    alert_type: alert_type,
+    message: string,
+    timestamp: int,
+    resolved: bool }
+
+  datatype alert_type =
+    | LowBalance
+    | DailyLimitReached
+    | UnusualSpending
+    | AssetInactive
+
+  record thresholds = {
+    min_balance_alert: int,
+    daily_limit: int }
+
+  record agent_summary = {
+    info: agent_info,
+    total_payments: int,
+    average_payment: int,
+    balance: int }
+
+  record category_breakdown = {
+    compute: int,
+    storage: int,
+    api: int,
+    network: int,
+    maintenance: int,
+    other: int }
+
+  record contract_stats = {
+    total_agents: int,
+    total_payments: int,
+    total_assets: int,
+    is_paused: bool,
+    total_volume: int }
+
+  record streaming_payment = {
+    id: int,
+    agent: address,
+    recipient: address,
+    asset_id: string,
+    rate_per_second: int,
+    start_time: int,
+    end_time: option(int),
+    total_paid: int,
+    last_claim_time: int,
+    is_active: bool,
+    metadata: string }
+
+  record oracle_payment = {
+    id: int,
+    agent: address,
+    recipient: address,
+    asset_id: string,
+    oracle_id: oracle(string, int),
+    oracle_query: string,
+    multiplier: int,
+    min_payment: int,
+    max_payment: int,
+    last_check_time: int,
+    total_paid: int,
+    is_active: bool }
+
+  record state = {
+    owner: address,
+    ai_agents: map(address, agent_info),
+    authorized_operators: map(address, bool),
+    paused: bool,
+    
+    // Pagos
+    payments: map(int, payment),
+    payment_counter: int,
+    
+    // Activos
+    assets: map(string, asset),
+    
+    // Límites y seguridad
+    agent_thresholds: map(address, thresholds),
+    daily_spent: map(address, int),
+    last_reset_day: map(address, int),
+    
+    // Alertas
+    alerts: map(int, alert),
+    alert_counter: int,
+    
+    // Índices para queries
+    agent_payments: map(address, list(int)),
+    asset_payments: map(string, list(int)),
+    
+    // Streaming payments
+    streaming_payments: map(int, streaming_payment),
+    streaming_counter: int,
+    agent_streams: map(address, list(int)),
+    
+    // Oracle payments
+    oracle_payments: map(int, oracle_payment),
+    oracle_counter: int,
+    agent_oracles: map(address, list(int)),
+    
+    // Estadísticas globales
+    total_volume: int }
+
+  // ============================================
+  // EVENTOS
+  // ============================================
+
+  datatype event =
+    | PaymentProcessed(int, address, address, int, string)
+    | AgentRegistered(address, string)
+    | AgentFunded(address, int)
+    | AlertCreated(int, address, alert_type, string)
+    | EmergencyPause(address)
+    | ContractUnpaused(address)
+    | DailyLimitExceeded(address, int)
+    | AgentDeactivated(address)
+
+  // ============================================
+  // INICIALIZACIÓN
+  // ============================================
+
+  entrypoint init() : state = {
+    owner = Call.caller,
+    ai_agents = {},
+    authorized_operators = {},
+    paused = false,
+    payments = {},
+    payment_counter = 0,
+    assets = {},
+    agent_thresholds = {},
+    daily_spent = {},
+    last_reset_day = {},
+    alerts = {},
+    alert_counter = 0,
+    agent_payments = {},
+    asset_payments = {},
+    streaming_payments = {},
+    streaming_counter = 0,
+    agent_streams = {},
+    oracle_payments = {},
+    oracle_counter = 0,
+    agent_oracles = {},
+    total_volume = 0 }
+
+  // ============================================
+  // MODIFICADORES Y VALIDACIONES
+  // ============================================
+
+  function require_owner() =
+    require(Call.caller == state.owner, "NOT_OWNER")
+
+  function require_not_paused() =
+    require(!state.paused, "CONTRACT_PAUSED")
+
+  function require_authorized() =
+    require(
+      Call.caller == state.owner || 
+      Map.lookup_default(Call.caller, state.authorized_operators, false),
+      "NOT_AUTHORIZED")
+
+  function is_agent_registered(agent: address) : bool =
+    Map.member(agent, state.ai_agents)
+
+  function is_agent_active(agent: address) : bool =
+    switch(Map.lookup(agent, state.ai_agents))
+      None => false
+      Some(info) => info.is_active
+
+  function get_current_day() : int =
+    Chain.timestamp / 86400
+
+  // ============================================
+  // GESTIÓN DE AUTORIZACIÓN
+  // ============================================
+
+  stateful entrypoint add_operator(operator: address) =
+    require_owner()
+    put(state{ authorized_operators[operator] = true })
+
+  stateful entrypoint remove_operator(operator: address) =
+    require_owner()
+    put(state{ authorized_operators = Map.delete(operator, state.authorized_operators) })
+
+  entrypoint is_operator(operator: address) : bool =
+    Map.lookup_default(operator, state.authorized_operators, false)
+
+  // ============================================
+  // PAUSAS DE EMERGENCIA
+  // ============================================
+
+  stateful entrypoint emergency_pause() =
+    require_owner()
+    put(state{ paused = true })
+    Chain.event(EmergencyPause(Call.caller))
+
+  stateful entrypoint unpause() =
+    require_owner()
+    put(state{ paused = false })
+    Chain.event(ContractUnpaused(Call.caller))
+
+  entrypoint is_paused() : bool =
+    state.paused
+
+  // ============================================
+  // GESTIÓN DE AGENTES
+  // ============================================
+
+  stateful entrypoint register_agent(
+    agent_address: address,
+    name: string,
+    initial_balance: int) =
+    
+    require_authorized()
+    require(!is_agent_registered(agent_address), "AGENT_ALREADY_REGISTERED")
+    require(initial_balance >= 0, "INVALID_BALANCE")
+    
+    let agent = {
+      name = name,
+      is_active = true,
+      balance = initial_balance,
+      created_at = Chain.timestamp,
+      total_spent = 0 }
+    
+    // Establecer thresholds por defecto
+    let default_thresholds = {
+      min_balance_alert = 100,
+      daily_limit = 10000 }
+    
+    put(state{
+      ai_agents[agent_address] = agent,
+      agent_thresholds[agent_address] = default_thresholds,
+      daily_spent[agent_address] = 0,
+      last_reset_day[agent_address] = get_current_day(),
+      agent_payments[agent_address] = [] })
+    
+    Chain.event(AgentRegistered(agent_address, name))
+
+  payable stateful entrypoint fund_agent(agent: address) =
+    require_authorized()
+    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
+    require(Call.value > 0, "NO_FUNDS")
+    
+    let current_agent = state.ai_agents[agent]
+    let updated_agent = current_agent{ 
+      balance = current_agent.balance + Call.value }
+    
+    put(state{ ai_agents[agent] = updated_agent })
+    Chain.event(AgentFunded(agent, Call.value))
+
+  stateful entrypoint withdraw_agent_funds(agent: address, amount: int) =
+    require_owner()
+    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
+    
+    let current_agent = state.ai_agents[agent]
+    require(current_agent.balance >= amount, "INSUFFICIENT_BALANCE")
+    
+    let updated_agent = current_agent{ 
+      balance = current_agent.balance - amount }
+    
+    put(state{ ai_agents[agent] = updated_agent })
+    Chain.spend(Call.caller, amount)
+
+  stateful entrypoint deactivate_agent(agent: address) =
+    require_authorized()
+    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
+    
+    let current_agent = state.ai_agents[agent]
+    let updated_agent = current_agent{ is_active = false }
+    
+    put(state{ ai_agents[agent] = updated_agent })
+    Chain.event(AgentDeactivated(agent))
+
+  stateful entrypoint reactivate_agent(agent: address) =
+    require_authorized()
+    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
+    
+    let current_agent = state.ai_agents[agent]
+    let updated_agent = current_agent{ is_active = true }
+    
+    put(state{ ai_agents[agent] = updated_agent })
+
+  // ============================================
+  // GESTIÓN DE LÍMITES Y THRESHOLDS
+  // ============================================
+
+  stateful entrypoint set_agent_thresholds(
+    agent: address,
+    min_balance: int,
+    daily_limit: int) =
+    
+    require_authorized()
+    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
+    
+    let thresholds = {
+      min_balance_alert = min_balance,
+      daily_limit = daily_limit }
+    
+    put(state{ agent_thresholds[agent] = thresholds })
+
+  entrypoint get_agent_thresholds(agent: address) : thresholds =
+    Map.lookup_default(
+      agent,
+      state.agent_thresholds,
+      { min_balance_alert = 100, daily_limit = 10000 })
+
+  function check_and_reset_daily_limit(agent: address) : int =
+    let current_day = get_current_day()
+    let last_day = Map.lookup_default(agent, state.last_reset_day, 0)
+    
+    if(current_day > last_day)
+      0  // Nuevo día, resetear
+    else
+      Map.lookup_default(agent, state.daily_spent, 0)
+
+  function can_spend(agent: address, amount: int) : bool =
+    let thresholds = get_agent_thresholds(agent)
+    let current_spent = check_and_reset_daily_limit(agent)
+    current_spent + amount =< thresholds.daily_limit
+
+  // ============================================
+  // PROCESAMIENTO DE PAGOS
+  // ============================================
+
+  stateful entrypoint process_payment(
+    agent: address,
+    recipient: address,
+    amount: int,
+    asset_id: string,
+    category: payment_category,
+    metadata: string) : int =
+    
+    require_not_paused()
+    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
+    require(is_agent_active(agent), "AGENT_INACTIVE")
+    require(amount > 0, "INVALID_AMOUNT")
+    
+    let current_agent = state.ai_agents[agent]
+    require(current_agent.balance >= amount, "INSUFFICIENT_BALANCE")
+    
+    // Verificar límite diario
+    let current_spent = check_and_reset_daily_limit(agent)
+    let current_day = get_current_day()
+    
+    if(!can_spend(agent, amount))
+      create_alert_internal(agent, DailyLimitReached, "Daily limit exceeded")
+      Chain.event(DailyLimitExceeded(agent, amount))
+      abort("DAILY_LIMIT_EXCEEDED")
+    
+    // Crear registro de pago
+    let payment_id = state.payment_counter + 1
+    let new_payment = {
+      id = payment_id,
+      from_agent = agent,
+      to_account = recipient,
+      amount = amount,
+      asset_id = asset_id,
+      category = category,
+      timestamp = Chain.timestamp,
+      metadata = metadata }
+    
+    // Actualizar balance del agente
+    let updated_agent = current_agent{
+      balance = current_agent.balance - amount,
+      total_spent = current_agent.total_spent + amount }
+    
+    // Actualizar o crear asset
+    let current_asset = Map.lookup_default(
+      asset_id,
+      state.assets,
+      { id = asset_id,
+        owner_agent = agent,
+        total_spent = 0,
+        payment_count = 0,
+        last_payment = 0,
+        is_active = true })
+    
+    let updated_asset = current_asset{
+      total_spent = current_asset.total_spent + amount,
+      payment_count = current_asset.payment_count + 1,
+      last_payment = Chain.timestamp }
+    
+    // Actualizar índices
+    let agent_payment_list = Map.lookup_default(agent, state.agent_payments, [])
+    let asset_payment_list = Map.lookup_default(asset_id, state.asset_payments, [])
+    
+    // Actualizar daily spent
+    let new_daily_spent = current_spent + amount
+    
+    // Ejecutar transferencia
+    Chain.spend(recipient, amount)
+    
+    // Guardar estado
+    put(state{
+      payments[payment_id] = new_payment,
+      payment_counter = payment_id,
+      ai_agents[agent] = updated_agent,
+      assets[asset_id] = updated_asset,
+      agent_payments[agent] = payment_id :: agent_payment_list,
+      asset_payments[asset_id] = payment_id :: asset_payment_list,
+      daily_spent[agent] = new_daily_spent,
+      last_reset_day[agent] = current_day,
+      total_volume = state.total_volume + amount })
+    
+    // Verificar alertas
+    check_balance_alert(agent, updated_agent.balance)
+    
+    Chain.event(PaymentProcessed(payment_id, agent, recipient, amount, asset_id))
+    
+    payment_id
+
+  // ============================================
+  // SISTEMA DE ALERTAS
+  // ============================================
+
+  stateful function create_alert_internal(
+    agent: address,
+    alert_type: alert_type,
+    message: string) : int =
+    
+    let alert_id = state.alert_counter + 1
+    let new_alert = {
+      id = alert_id,
+      agent = agent,
+      alert_type = alert_type,
+      message = message,
+      timestamp = Chain.timestamp,
+      resolved = false }
+    
+    put(state{
+      alerts[alert_id] = new_alert,
+      alert_counter = alert_id })
+    
+    Chain.event(AlertCreated(alert_id, agent, alert_type, message))
+    alert_id
+
+  function check_balance_alert(agent: address, current_balance: int) =
+    let thresholds = get_agent_thresholds(agent)
+    if(current_balance < thresholds.min_balance_alert)
+      create_alert_internal(agent, LowBalance, "Balance below threshold")
+
+  stateful entrypoint resolve_alert(alert_id: int) =
+    require_authorized()
+    require(Map.member(alert_id, state.alerts), "ALERT_NOT_FOUND")
+    
+    let current_alert = state.alerts[alert_id]
+    let updated_alert = current_alert{ resolved = true }
+    
+    put(state{ alerts[alert_id] = updated_alert })
+
+  entrypoint get_alert(alert_id: int) : option(alert) =
+    Map.lookup(alert_id, state.alerts)
+
+  entrypoint get_unresolved_alerts() : list(alert) =
+    let all_alerts = Map.to_list(state.alerts)
+    let unresolved = List.filter(
+      (pair) =>
+        let (_, alert) = pair
+        !alert.resolved,
+      all_alerts)
+    List.map((pair) => let (_, alert) = pair in alert, unresolved)
+
+  // ============================================
+  // CONSULTAS DE AGENTES
+  // ============================================
+
+  entrypoint get_agent_info(agent: address) : option(agent_info) =
+    Map.lookup(agent, state.ai_agents)
+
+  entrypoint get_agent_balance(agent: address) : int =
+    switch(Map.lookup(agent, state.ai_agents))
+      None => 0
+      Some(info) => info.balance
+
+  entrypoint get_agent_payments(agent: address) : list(payment) =
+    let payment_ids = Map.lookup_default(agent, state.agent_payments, [])
+    List.map((id) => state.payments[id], payment_ids)
+
+  entrypoint get_agent_summary(agent: address) : agent_summary =
+    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
+    
+    let agent_info = state.ai_agents[agent]
+    let payment_ids = Map.lookup_default(agent, state.agent_payments, [])
+    let total_payments = List.length(payment_ids)
+    
+    let average = if(total_payments > 0)
+      agent_info.total_spent / total_payments
+    else
+      0
+    
+    { info = agent_info,
+      total_payments = total_payments,
+      average_payment = average,
+      balance = agent_info.balance }
+
+  entrypoint get_agent_spending_by_category(agent: address) : category_breakdown =
+    let payment_ids = Map.lookup_default(agent, state.agent_payments, [])
+    let payments = List.map((id) => state.payments[id], payment_ids)
+    
+    calculate_category_breakdown(payments)
+
+  function calculate_category_breakdown(payments: list(payment)) : category_breakdown =
+    List.foldl(
+      (acc, p) =>
+        switch(p.category)
+          ComputeCost => acc{ compute = acc.compute + p.amount }
+          StorageCost => acc{ storage = acc.storage + p.amount }
+          APICost => acc{ api = acc.api + p.amount }
+          NetworkCost => acc{ network = acc.network + p.amount }
+          MaintenanceCost => acc{ maintenance = acc.maintenance + p.amount }
+          Other => acc{ other = acc.other + p.amount },
+      { compute = 0, storage = 0, api = 0, network = 0, maintenance = 0, other = 0 },
+      payments)
+
+  // ============================================
+  // CONSULTAS DE ACTIVOS
+  // ============================================
+
+  entrypoint get_asset(asset_id: string) : option(asset) =
+    Map.lookup(asset_id, state.assets)
+
+  entrypoint get_asset_payments(asset_id: string) : list(payment) =
+    let payment_ids = Map.lookup_default(asset_id, state.asset_payments, [])
+    List.map((id) => state.payments[id], payment_ids)
+
+  stateful entrypoint deactivate_asset(asset_id: string) =
+    require_authorized()
+    require(Map.member(asset_id, state.assets), "ASSET_NOT_FOUND")
+    
+    let current_asset = state.assets[asset_id]
+    let updated_asset = current_asset{ is_active = false }
+    
+    put(state{ assets[asset_id] = updated_asset })
+
+  // ============================================
+  // CONSULTAS DE PAGOS
+  // ============================================
+
+  entrypoint get_payment(payment_id: int) : option(payment) =
+    Map.lookup(payment_id, state.payments)
+
+  entrypoint get_total_payments() : int =
+    state.payment_counter
+
+  // ============================================
+  // ESTADÍSTICAS GLOBALES
+  // ============================================
+
+  entrypoint get_contract_stats() : contract_stats =
+    { total_agents = Map.size(state.ai_agents),
+      total_payments = state.payment_counter,
+      total_assets = Map.size(state.assets),
+      is_paused = state.paused,
+      total_volume = state.total_volume }
+
+  entrypoint get_owner() : address =
+    state.owner
+
+  entrypoint get_daily_spent(agent: address) : int =
+    let current_spent = check_and_reset_daily_limit(agent)
+    current_spent
+
+  // ============================================
+  // FUNCIONES DE ADMINISTRACIÓN
+  // ============================================
+
+  stateful entrypoint transfer_ownership(new_owner: address) =
+    require_owner()
+    require(new_owner != Call.caller, "SAME_OWNER")
+    put(state{ owner = new_owner })
+
+  payable stateful entrypoint deposit() =
+    require(Call.value > 0, "NO_FUNDS")
+    // Fondos van al contrato para cubrir gas de transferencias
+
+  stateful entrypoint withdraw_contract_balance(amount: int) =
+    require_owner()
+    require(amount > 0, "INVALID_AMOUNT")
+    Chain.spend(Call.caller, amount)
+
+  // ============================================
+  // STREAMING PAYMENTS (Pagos en tiempo real)
+  // ============================================
+
+  stateful entrypoint start_streaming_payment(
+    agent: address,
+    recipient: address,
+    asset_id: string,
+    rate_per_second: int,
+    metadata: string) : int =
+    
+    require_not_paused()
+    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
+    require(is_agent_active(agent), "AGENT_INACTIVE")
+    require(rate_per_second > 0, "INVALID_RATE")
+    
+    let stream_id = state.streaming_counter + 1
+    let new_stream = {
+      id = stream_id,
+      agent = agent,
+      recipient = recipient,
+      asset_id = asset_id,
+      rate_per_second = rate_per_second,
+      start_time = Chain.timestamp,
+      end_time = None,
+      total_paid = 0,
+      last_claim_time = Chain.timestamp,
+      is_active = true,
+      metadata = metadata }
+    
+    let agent_stream_list = Map.lookup_default(agent, state.agent_streams, [])
+    
+    put(state{
+      streaming_payments[stream_id] = new_stream,
+      streaming_counter = stream_id,
+      agent_streams[agent] = stream_id :: agent_stream_list })
+    
+    stream_id
+
+  stateful entrypoint claim_streaming_payment(stream_id: int) =
+    require_not_paused()
+    require(Map.member(stream_id, state.streaming_payments), "STREAM_NOT_FOUND")
+    
+    let stream = state.streaming_payments[stream_id]
+    require(stream.is_active, "STREAM_NOT_ACTIVE")
+    
+    let current_time = Chain.timestamp
+    let time_elapsed = current_time - stream.last_claim_time
+    let amount_due = time_elapsed * stream.rate_per_second
+    
+    require(amount_due > 0, "NO_PAYMENT_DUE")
+    
+    let agent_info = state.ai_agents[stream.agent]
+    require(agent_info.balance >= amount_due, "INSUFFICIENT_BALANCE")
+    
+    // Crear pago regular
+    let payment_id = process_payment_internal(
+      stream.agent,
+      stream.recipient,
+      amount_due,
+      stream.asset_id,
+      ComputeCost,
+      String.concat("Stream #", Int.to_str(stream_id)))
+    
+    // Actualizar stream
+    let updated_stream = stream{
+      total_paid = stream.total_paid + amount_due,
+      last_claim_time = current_time }
+    
+    put(state{ streaming_payments[stream_id] = updated_stream })
+
+  stateful entrypoint stop_streaming_payment(stream_id: int) =
+    require(Map.member(stream_id, state.streaming_payments), "STREAM_NOT_FOUND")
+    
+    let stream = state.streaming_payments[stream_id]
+    require(
+      Call.caller == stream.agent || 
+      Call.caller == state.owner ||
+      Map.lookup_default(Call.caller, state.authorized_operators, false),
+      "NOT_AUTHORIZED")
+    
+    // Hacer último claim antes de cerrar
+    if(stream.is_active)
+      claim_streaming_payment(stream_id)
+    
+    let updated_stream = stream{
+      is_active = false,
+      end_time = Some(Chain.timestamp) }
+    
+    put(state{ streaming_payments[stream_id] = updated_stream })
+
+  entrypoint get_streaming_payment(stream_id: int) : option(streaming_payment) =
+    Map.lookup(stream_id, state.streaming_payments)
+
+  entrypoint calculate_streaming_due(stream_id: int) : int =
+    switch(Map.lookup(stream_id, state.streaming_payments))
+      None => 0
+      Some(stream) =>
+        if(stream.is_active)
+          let time_elapsed = Chain.timestamp - stream.last_claim_time
+          time_elapsed * stream.rate_per_second
+        else
+          0
+
+  entrypoint get_agent_streams(agent: address) : list(streaming_payment) =
+    let stream_ids = Map.lookup_default(agent, state.agent_streams, [])
+    List.map((id) => state.streaming_payments[id], stream_ids)
+
+  // ============================================
+  // ORACLE PAYMENTS (Pagos basados en datos externos)
+  // ============================================
+
+  stateful entrypoint create_oracle_payment(
+    agent: address,
+    recipient: address,
+    asset_id: string,
+    oracle_id: oracle(string, int),
+    oracle_query: string,
+    multiplier: int,
+    min_payment: int,
+    max_payment: int) : int =
+    
+    require_not_paused()
+    require(is_agent_registered(agent), "AGENT_NOT_REGISTERED")
+    require(is_agent_active(agent), "AGENT_INACTIVE")
+    require(multiplier > 0, "INVALID_MULTIPLIER")
+    
+    let oracle_payment_id = state.oracle_counter + 1
+    let new_oracle_payment = {
+      id = oracle_payment_id,
+      agent = agent,
+      recipient = recipient,
+      asset_id = asset_id,
+      oracle_id = oracle_id,
+      oracle_query = oracle_query,
+      multiplier = multiplier,
+      min_payment = min_payment,
+      max_payment = max_payment,
+      last_check_time = Chain.timestamp,
+      total_paid = 0,
+      is_active = true }
+    
+    let agent_oracle_list = Map.lookup_default(agent, state.agent_oracles, [])
+    
+    put(state{
+      oracle_payments[oracle_payment_id] = new_oracle_payment,
+      oracle_counter = oracle_payment_id,
+      agent_oracles[agent] = oracle_payment_id :: agent_oracle_list })
+    
+    oracle_payment_id
+
+  stateful entrypoint execute_oracle_payment(oracle_payment_id: int, oracle_response: int) =
+    require_not_paused()
+    require(Map.member(oracle_payment_id, state.oracle_payments), "ORACLE_PAYMENT_NOT_FOUND")
+    
+    let oracle_payment = state.oracle_payments[oracle_payment_id]
+    require(oracle_payment.is_active, "ORACLE_PAYMENT_NOT_ACTIVE")
+    
+    // Calcular monto basado en respuesta del oráculo
+    let calculated_amount = oracle_response * oracle_payment.multiplier
+    
+    // Aplicar límites min/max
+    let final_amount = 
+      if(calculated_amount < oracle_payment.min_payment)
+        oracle_payment.min_payment
+      else if(calculated_amount > oracle_payment.max_payment)
+        oracle_payment.max_payment
+      else
+        calculated_amount
+    
+    require(final_amount > 0, "INVALID_PAYMENT_AMOUNT")
+    
+    let agent_info = state.ai_agents[oracle_payment.agent]
+    require(agent_info.balance >= final_amount, "INSUFFICIENT_BALANCE")
+    
+    // Crear pago
+    let payment_id = process_payment_internal(
+      oracle_payment.agent,
+      oracle_payment.recipient,
+      final_amount,
+      oracle_payment.asset_id,
+      Other,
+      String.concat("Oracle Payment #", Int.to_str(oracle_payment_id)))
+    
+    // Actualizar oracle payment
+    let updated_oracle_payment = oracle_payment{
+      total_paid = oracle_payment.total_paid + final_amount,
+      last_check_time = Chain.timestamp }
+    
+    put(state{ oracle_payments[oracle_payment_id] = updated_oracle_payment })
+
+  stateful entrypoint deactivate_oracle_payment(oracle_payment_id: int) =
+    require(Map.member(oracle_payment_id, state.oracle_payments), "ORACLE_PAYMENT_NOT_FOUND")
+    
+    let oracle_payment = state.oracle_payments[oracle_payment_id]
+    require(
+      Call.caller == oracle_payment.agent || 
+      Call.caller == state.owner ||
+      Map.lookup_default(Call.caller, state.authorized_operators, false),
+      "NOT_AUTHORIZED")
+    
+    let updated_oracle_payment = oracle_payment{ is_active = false }
+    put(state{ oracle_payments[oracle_payment_id] = updated_oracle_payment })
+
+  entrypoint get_oracle_payment(oracle_payment_id: int) : option(oracle_payment) =
+    Map.lookup(oracle_payment_id, state.oracle_payments)
+
+  entrypoint get_agent_oracle_payments(agent: address) : list(oracle_payment) =
+    let oracle_ids = Map.lookup_default(agent, state.agent_oracles, [])
+    List.map((id) => state.oracle_payments[id], oracle_ids)
+
+  // ============================================
+  // FUNCIÓN AUXILIAR INTERNA
+  // ============================================
+
+  stateful function process_payment_internal(
+    agent: address,
+    recipient: address,
+    amount: int,
+    asset_id: string,
+    category: payment_category,
+    metadata: string) : int =
+    
+    let current_agent = state.ai_agents[agent]
+    
+    let payment_id = state.payment_counter + 1
+    let new_payment = {
+      id = payment_id,
+      from_agent = agent,
+      to_account = recipient,
+      amount = amount,
+      asset_id = asset_id,
+      category = category,
+      timestamp = Chain.timestamp,
+      metadata = metadata }
+    
+    let updated_agent = current_agent{
+      balance = current_agent.balance - amount,
+      total_spent = current_agent.total_spent + amount }
+    
+    let current_asset = Map.lookup_default(
+      asset_id,
+      state.assets,
+      { id = asset_id,
+        owner_agent = agent,
+        total_spent = 0,
+        payment_count = 0,
+        last_payment = 0,
+        is_active = true })
+    
+    let updated_asset = current_asset{
+      total_spent = current_asset.total_spent + amount,
+      payment_count = current_asset.payment_count + 1,
+      last_payment = Chain.timestamp }
+    
+    let agent_payment_list = Map.lookup_default(agent, state.agent_payments, [])
+    let asset_payment_list = Map.lookup_default(asset_id, state.asset_payments, [])
+    
+    Chain.spend(recipient, amount)
+    
+    put(state{
+      payments[payment_id] = new_payment,
+      payment_counter = payment_id,
+      ai_agents[agent] = updated_agent,
+      assets[asset_id] = updated_asset,
+      agent_payments[agent] = payment_id :: agent_payment_list,
+      asset_payments[asset_id] = payment_id :: asset_payment_list,
+      total_volume = state.total_volume + amount })
+    
+    payment_id
