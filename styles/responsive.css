@@ -384,9 +384,15 @@
     }
     
     .gradient-text {
-        background: none;
-        -webkit-text-fill-color: initial;
-        color: #333;
+        background: linear-gradient(135deg, #0AF1D8 0%, #06C2FF 25%, #9B7BFF 50%, #B995FF 75%, #FF6B9D 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        background-size: 200% 200%;
+        animation: textGlow 3s ease-in-out infinite alternate, gradientShift 4s ease-in-out infinite;
+        text-shadow: 0 0 20px rgba(10, 241, 216, 0.3);
+        font-weight: 700;
+        letter-spacing: 0.3px;
     }
 }
 

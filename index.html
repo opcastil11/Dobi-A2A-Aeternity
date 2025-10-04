@@ -10,6 +10,80 @@
     <link rel="stylesheet" href="styles/forms.css">
     <link rel="stylesheet" href="styles/responsive.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Button gradient overrides (paste after your CSS links) -->
+    <style>
+      :root{
+        --btn-radius: 14px;
+        --btn-border: 1px solid rgba(255,255,255,.14);
+        --btn-inner: inset 0 1px 0 rgba(255,255,255,.18);
+      }
+
+      /* Base */
+      .btn{
+        border-radius: var(--btn-radius) !important;
+        border: var(--btn-border);
+        color: #fff !important;
+        background-size: 200% 200%;
+        transition: transform .15s ease, box-shadow .2s ease, filter .2s ease, background-position .25s ease;
+        box-shadow: var(--btn-inner);
+      }
+      .btn.btn-large{ padding: 14px 22px; font-weight: 600; }
+
+      /* PRIMARIO: teal (como el de la imagen 2) */
+      .btn-primary{
+        background-image: linear-gradient(135deg, #0AF1D8 0%, #09E3C5 35%, #06C2FF 100%) !important;
+        box-shadow:
+          0 10px 24px rgba(0,255,208,.18),
+          0 2px 6px rgba(0,0,0,.25),
+          var(--btn-inner);
+      }
+      .btn-primary:hover{
+        transform: translateY(-1px);
+        filter: brightness(1.06);
+        background-position: 0% 60%;
+        box-shadow:
+          0 14px 30px rgba(0,255,208,.22),
+          0 4px 10px rgba(0,0,0,.28),
+          var(--btn-inner);
+      }
+      .btn-primary:active{ transform: translateY(0); filter: brightness(.98); }
+
+      /* SECUNDARIO: púrpura (como el de la imagen 2) */
+      .btn-secondary{
+        background-image: linear-gradient(135deg, #9B7BFF 0%, #8666FF 40%, #B995FF 100%) !important;
+        border: 1px solid rgba(155,123,255,.35);
+        box-shadow:
+          0 10px 24px rgba(155,123,255,.18),
+          var(--btn-inner);
+      }
+      .btn-secondary:hover{
+        transform: translateY(-1px);
+        filter: brightness(1.06);
+        background-position: 0% 60%;
+        box-shadow:
+          0 14px 30px rgba(155,123,255,.25),
+          0 4px 10px rgba(0,0,0,.28),
+          var(--btn-inner);
+      }
+
+      /* Pequeños */
+      .btn.btn-sm{ padding: 8px 12px; font-size: 13px; }
+
+      /* Nav pill activo (opcional, estilo de la imagen 2) */
+      .nav-btn.active, .nav-btn:focus-visible{
+        background-image: linear-gradient(135deg, #0AF1D8 0%, #06C2FF 100%) !important;
+        color: #0b1020 !important;
+        border: var(--btn-border);
+        box-shadow: 0 6px 16px rgba(0,255,208,.16), var(--btn-inner);
+      }
+
+      /* Conectar wallet usa el primario */
+      #connect-wallet.btn{
+        background-image: linear-gradient(135deg, #0AF1D8 0%, #06C2FF 100%) !important;
+      }
+    </style>
+    
     <!-- Aeternity SDK -->
     <script src="https://unpkg.com/@aeternity/aepp-sdk@14.1.0/dist/aepp-sdk.browser-script.cjs"></script>
 </head>
@@ -346,6 +420,98 @@
                                 <label>Uptime</label>
                                 <span id="summary-uptime">-</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Payments Stream (mock) -->
+                    <div class="summary-subsection">
+                        <div class="section-header">
+                            <h3><i class="fas fa-receipt"></i> Payments Stream (mock)</h3>
+                            <div class="hint">Incoming/outgoing payments for this station (simulados)</div>
+                        </div>
+
+                        <div class="payments-toolbar" style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+                            <button class="btn btn-sm btn-secondary" id="btn-pause-payments"><i class="fas fa-pause"></i> Pause</button>
+                            <button class="btn btn-sm btn-secondary" id="btn-resume-payments"><i class="fas fa-play"></i> Resume</button>
+                            <span id="payments-status" style="font-size:12px; opacity:.8;">live</span>
+                        </div>
+
+                        <div id="payments-feed" class="logs-list" style="max-height:260px; overflow:auto; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px;">
+                            <!-- payment items will render here -->
+                        </div>
+                    </div>
+
+                    <!-- Agent Session (Auto) -->
+                    <div class="summary-subsection">
+                        <div class="section-header">
+                            <h3><i class="fas fa-robot"></i> Agent Session (Auto)</h3>
+                            <div class="hint">El charger orquesta la sesión y liquida el pago automáticamente</div>
+                        </div>
+
+                        <div class="device-summary-card">
+                            <div class="summary-grid">
+                                <div class="summary-item">
+                                    <label>kWh objetivo</label>
+                                    <input id="agent-kwh" type="number" min="1" step="1" value="12" />
+                                </div>
+                                <div class="summary-item">
+                                    <label>Tarifa (AE/kWh)</label>
+                                    <input id="agent-tariff" type="number" min="0.01" step="0.01" value="0.12" />
+                                </div>
+                                <div class="summary-item">
+                                    <label>Utility Address (AE)</label>
+                                    <input id="agent-utility" type="text" placeholder="ak_utility_address..." />
+                                </div>
+                                <div class="summary-item">
+                                    <label>Total estimado (AE)</label>
+                                    <span id="agent-total">1.44</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Agente</label>
+                                    <div style="display:flex; gap:10px; align-items:center;">
+                                        <input id="agent-toggle" type="checkbox" checked />
+                                        <span>Auto settlement ON</span>
+                                    </div>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Estado</label>
+                                    <span id="agent-status">idle</span>
+                                </div>
+                            </div>
+
+                            <!-- Progreso de la sesión -->
+                            <div style="margin-top:14px;">
+                                <div id="agent-progress-wrap" style="background:rgba(255,255,255,.08); height:10px; border-radius:999px; overflow:hidden;">
+                                    <div id="agent-progress-bar" style="height:10px; width:0%; background:linear-gradient(90deg,#00E5FF,#7C4DFF);"></div>
+                                </div>
+                                <div id="agent-progress-text" style="font-size:12px; opacity:.8; margin-top:6px;">0%</div>
+                            </div>
+
+                            <div class="form-actions" style="margin-top:12px; display:flex; gap:8px;">
+                                <button class="btn btn-secondary" id="agent-arrival"><i class="fas fa-car"></i> Simular llegada de vehículo</button>
+                                <button class="btn btn-secondary" id="agent-fund"><i class="fas fa-coins"></i> Fund 5 AE</button>
+                                <button class="btn btn-secondary" id="agent-reset"><i class="fas fa-rotate-left"></i> Reset</button>
+                            </div>
+
+                            <!-- Eventos de la sesión -->
+                            <div style="margin-top:14px;">
+                                <h4 style="margin:0 0 8px 0;"><i class="fas fa-stream"></i> Session Events</h4>
+                                <div id="session-events" class="logs-list" style="max-height:160px; overflow:auto; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px;">
+                                    <!-- events -->
+                                </div>
+                            </div>
+
+                            <!-- Historial -->
+                            <div style="margin-top:14px;">
+                                <h4 style="margin:0 0 8px 0;"><i class="fas fa-clock-rotate-left"></i> Session History</h4>
+                                <div id="session-history" class="logs-list" style="max-height:160px; overflow:auto; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px;">
+                                    <!-- history rows -->
+                                </div>
+                            </div>
+
+                            <p style="font-size:12px; opacity:.75; margin-top:8px;">
+                                Nota: 100% mock visual. Luego conectaremos el pago automático al smart contract; aquí solo se simula el settlement Station → Utility.
+                            </p>
                         </div>
                     </div>
                 </div>
