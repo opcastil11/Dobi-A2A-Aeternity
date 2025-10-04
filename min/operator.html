@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EV Charger - Connected to Blockchain</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@aeternity/aepp-sdk@latest/dist/aepp-sdk.browser-script.js"></script>
+    <script src="https://unpkg.com/@aeternity/aepp-sdk@14.1.0/dist/aepp-sdk.browser-script.cjs"></script>
 </head>
 <body class="bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen p-6">
     
@@ -17,13 +17,13 @@
                     <div id="connectionStatus" class="w-3 h-3 rounded-full bg-red-500"></div>
                     <span id="connectionText" class="text-sm font-medium text-gray-700">Not Connected</span>
                 </div>
-                <button id="connectWallet" onclick="connectWallet()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-bold">
+                <button id="connectWallet" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-bold">
                     Connect Superhero Wallet
                 </button>
             </div>
             <div id="walletInfo" class="mt-2 text-xs text-gray-600 hidden">
                 <p>Address: <span id="walletAddress" class="font-mono"></span></p>
-                <p>Contract: <span id="contractAddress" class="font-mono"></span></p>
+                <p>Contract: ct_gWCgyfWtVYAYXD2zwPQHxLK6btmvjhPhZE9XVmSzpaVNVPjb7</p>
             </div>
         </div>
 
@@ -50,7 +50,7 @@
                     <span class="text-2xl">💰</span>
                 </div>
                 <p id="chargerBalance" class="text-2xl font-bold text-green-600">Loading...</p>
-                <button onclick="refillBalance()" class="mt-2 w-full px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600">
+                <button id="refillBtn" class="mt-2 w-full px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600">
                     + Add 1000 aettos
                 </button>
             </div>
@@ -66,41 +66,32 @@
 
             <div class="bg-white rounded-xl shadow p-4">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-gray-600 text-sm">Cost This Session</span>
-                    <span class="text-2xl">💸</span>
+                    <span class="text-gray-600 text-sm">Total Consumed</span>
+                    <span class="text-2xl">📊</span>
                 </div>
-                <p id="sessionCost" class="text-2xl font-bold text-orange-600">0 aettos</p>
-                <p class="text-xs text-gray-500 mt-1">Auto-paying provider</p>
+                <p id="totalKwh" class="text-2xl font-bold text-purple-600">0 kWh</p>
+                <p class="text-xs text-gray-500 mt-1">Lifetime usage</p>
             </div>
 
             <div class="bg-white rounded-xl shadow p-4">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-gray-600 text-sm">Active Session</span>
-                    <span class="text-2xl">📊</span>
+                    <span class="text-gray-600 text-sm">Total Paid</span>
+                    <span class="text-2xl">💸</span>
                 </div>
-                <p id="sessionId" class="text-2xl font-bold text-purple-600">None</p>
-                <p class="text-xs text-gray-500 mt-1">Blockchain session ID</p>
+                <p id="totalPaid" class="text-2xl font-bold text-orange-600">0 aettos</p>
+                <p class="text-xs text-gray-500 mt-1">Lifetime payments</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Provider Selection -->
             <div>
                 <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                     <h2 class="text-2xl font-bold text-gray-800 mb-4">⚡ Electricity Providers</h2>
-                    
                     <div id="providers" class="space-y-3">
-                        <p class="text-gray-500 text-center py-4">Connect wallet to see providers</p>
-                    </div>
-                    
-                    <div class="mt-4">
-                        <button onclick="registerProvider()" class="w-full py-2 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600">
-                            + Register New Provider
-                        </button>
+                        <p class="text-gray-500 text-center py-4">Connect wallet first</p>
                     </div>
                 </div>
 
-                <!-- Active Consumption -->
                 <div id="activeConsumption" class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white hidden">
                     <div class="flex justify-between items-start mb-4">
                         <div>
@@ -112,9 +103,8 @@
                             <p class="text-lg font-bold" id="activeSessionId">#0</p>
                         </div>
                     </div>
-
                     <div class="bg-white/10 rounded-xl p-4 mb-4">
-                        <div class="grid grid-cols-2 gap-4 mb-3">
+                        <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <p class="text-sm text-purple-100">kWh Used</p>
                                 <p class="text-2xl font-bold" id="activeKwh">0</p>
@@ -124,29 +114,29 @@
                                 <p class="text-2xl font-bold" id="activeCost">0</p>
                             </div>
                         </div>
+                        <div class="mt-3 pt-3 border-t border-white/20">
+                            <p class="text-sm text-purple-100">Rate: <span id="activeRate" class="font-bold">0</span> aettos/kWh</p>
+                        </div>
                     </div>
-
                     <div class="bg-white/10 rounded-xl p-3 mb-4 text-sm">
                         <p class="font-bold mb-1">Blockchain Status</p>
-                        <p class="text-purple-100">Oracle reading meter every 15 seconds</p>
+                        <p class="text-purple-100">Updates every 15 seconds</p>
                         <p class="text-xs text-purple-200 mt-2">
                             Elapsed: <span id="elapsedTime">0 seconds</span>
                         </p>
                     </div>
-
-                    <button onclick="stopConsumption()" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition">
-                        Stop & Finalize on Blockchain
+                    <button id="stopBtn" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl">
+                        Stop & Finalize
                     </button>
                 </div>
 
                 <div id="noConsumption" class="bg-white rounded-2xl shadow-lg p-8 text-center">
                     <div class="text-gray-300 mb-4 text-6xl">⚡</div>
                     <h3 class="text-xl font-bold text-gray-800 mb-2">No Active Session</h3>
-                    <p class="text-gray-600">Connect wallet and select a provider</p>
+                    <p class="text-gray-600">Connect wallet and select provider</p>
                 </div>
             </div>
 
-            <!-- Blockchain Events -->
             <div>
                 <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
                     <h2 class="text-2xl font-bold text-gray-800 mb-4">⛓ Blockchain Transactions</h2>
@@ -156,370 +146,417 @@
                 </div>
 
                 <div class="bg-white rounded-2xl shadow-lg p-6">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4">📊 Session History</h2>
-                    <div id="history" class="space-y-3">
-                        <p class="text-gray-500 text-center py-8">No completed sessions</p>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">System Log</h2>
+                    <div id="console" class="font-mono text-sm text-green-400 bg-gray-900 rounded p-4 space-y-1 max-h-60 overflow-y-auto">
+                        <p>[System] Waiting for SDK...</p>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Console Log -->
-        <div class="mt-6 bg-gray-900 rounded-2xl shadow-lg p-6">
-            <h2 class="text-xl font-bold text-white mb-4">System Log</h2>
-            <div id="console" class="font-mono text-sm text-green-400 space-y-1 max-h-60 overflow-y-auto">
-                <p>[System] Waiting for wallet connection...</p>
             </div>
         </div>
     </div>
 
     <script>
-        let aeSdk = null;
-        let contract = null;
-        let walletAddress = null;
-        let activeSession = null;
-        let updateInterval = null;
-        let startTime = null;
-        
+        const { AeSdkAepp, Node, BrowserWindowMessageConnection, walletDetector } = window.Aeternity;
+
         const CONTRACT_ADDRESS = 'ct_gWCgyfWtVYAYXD2zwPQHxLK6btmvjhPhZE9XVmSzpaVNVPjb7';
         const CHARGER_ID = 'CHARGER_001';
         const CHARGER_LOCATION = 'Downtown Station';
 
-        async function connectWallet() {
-            try {
-                logToConsole('Connecting to Superhero Wallet...');
-                
-                const node = new Ae.Node('https://testnet.aeternity.io');
-                
-                aeSdk = new Ae.AeSdk({
-                    nodes: [{ name: 'testnet', instance: node }],
-                    compilerUrl: 'https://compiler.aepps.com'
-                });
+        let aeSdk;
+        let contract;
+        let stopScan;
+        let connected = false;
+        let currentAddress;
+        let activeSession = null;
+        let updateInterval = null;
+        let startTime = null;
 
-                const scannerConnection = await Ae.BrowserWindowMessageConnection({
-                    connectionInfo: { id: 'charger-app' }
-                });
-
-                await aeSdk.connectToWallet(scannerConnection);
-                await aeSdk.subscribeAddress('subscribe', 'connected');
-                
-                const addresses = await aeSdk.addresses();
-                walletAddress = addresses[0];
-
-                contract = await aeSdk.getContractInstance({ 
-                    contractAddress: CONTRACT_ADDRESS 
-                });
-
-                logToConsole(`Connected: ${walletAddress.slice(0, 15)}...`);
-                logToConsole(`Contract: ${CONTRACT_ADDRESS.slice(0, 15)}...`);
-
-                updateConnectionStatus(true);
-                await ensureChargerRegistered();
-                await loadChargerData();
-                loadProviders();
-
-            } catch (error) {
-                console.error('Connection error:', error);
-                logToConsole(`Error: ${error.message}`);
-                alert('Failed to connect. Make sure Superhero Wallet is installed and unlocked.');
-            }
+        function log(msg) {
+            const el = document.getElementById('console');
+            const line = document.createElement('p');
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            el.insertBefore(line, el.firstChild);
+            while (el.children.length > 20) el.removeChild(el.lastChild);
         }
 
-        async function ensureChargerRegistered() {
-            try {
-                const info = await contract.methods.get_charger_info(CHARGER_ID);
-                
-                if (!info.decodedResult) {
-                    logToConsole('Charger not registered. Registering...');
-                    
-                    const result = await contract.methods.register_charger(
-                        CHARGER_ID,
-                        CHARGER_LOCATION,
-                        0
-                    );
-                    
-                    logToConsole(`Charger registered! Tx: ${result.hash.slice(0, 20)}...`);
-                    addBlockchainEvent('Charger Registered', result.hash, 'success');
-                }
-            } catch (error) {
-                logToConsole(`Registration check failed: ${error.message}`);
-            }
-        }
-
-        function updateConnectionStatus(connected) {
-            const status = document.getElementById('connectionStatus');
-            const text = document.getElementById('connectionText');
-            const walletInfo = document.getElementById('walletInfo');
-            const connectBtn = document.getElementById('connectWallet');
-
-            if (connected) {
-                status.className = 'w-3 h-3 rounded-full bg-green-500';
-                text.textContent = 'Connected to æternity';
-                walletInfo.classList.remove('hidden');
-                document.getElementById('walletAddress').textContent = walletAddress;
-                document.getElementById('contractAddress').textContent = CONTRACT_ADDRESS;
-                connectBtn.textContent = 'Connected';
-                connectBtn.disabled = true;
-                connectBtn.className = 'px-4 py-2 bg-green-500 text-white rounded-lg cursor-not-allowed';
-            }
-        }
-
-        async function loadChargerData() {
-            try {
-                const result = await contract.methods.get_charger_balance(CHARGER_ID);
-                const balance = result.decodedResult;
-                
-                document.getElementById('chargerBalance').textContent = `${balance} aettos`;
-                logToConsole(`Balance: ${balance} aettos`);
-                
-            } catch (error) {
-                console.error('Error loading charger data:', error);
-                logToConsole(`Error loading data: ${error.message}`);
-            }
-        }
-
-        function loadProviders() {
-            const providers = [
-                { id: 'provider_001', name: 'PowerCo Energy', rate: 50 },
-                { id: 'provider_002', name: 'GreenEnergy', rate: 45 }
-            ];
-
-            const container = document.getElementById('providers');
-            container.innerHTML = providers.map(p => `
-                <div class="border-2 border-gray-200 rounded-xl p-4 hover:border-purple-400 transition">
-                    <h3 class="font-bold text-gray-800 mb-2">${p.name}</h3>
-                    <p class="text-sm text-gray-600 mb-3">Rate: ${p.rate} aettos/kWh</p>
-                    <button onclick="startConsumption('${p.id}', '${p.name}')" 
-                            class="w-full py-2 bg-purple-500 text-white rounded-lg font-bold hover:bg-purple-600">
-                        ⚡ Start Consuming
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        async function registerProvider() {
-            if (!contract) {
-                alert('Please connect wallet first');
-                return;
-            }
-
-            const id = prompt('Provider ID:');
-            const name = prompt('Provider Name:');
-            const rate = prompt('Price per kWh (in aettos):');
-
-            if (!id || !name || !rate) return;
-
-            try {
-                logToConsole('Registering provider...');
-                
-                const result = await contract.methods.register_provider(id, name, parseInt(rate));
-                
-                logToConsole(`Provider registered! Tx: ${result.hash.slice(0, 20)}...`);
-                addBlockchainEvent('Provider Registered', result.hash, 'success');
-                
-                loadProviders();
-            } catch (error) {
-                logToConsole(`Error: ${error.message}`);
-                alert('Failed to register provider');
-            }
-        }
-
-        async function startConsumption(providerId, providerName) {
-            if (!contract) {
-                alert('Please connect wallet first');
-                return;
-            }
-
-            try {
-                logToConsole('Starting consumption session...');
-                
-                const oracleId = 'ok_2t3TRitMLf3W={ 5HXk5TxH32HYvLi9LrQ8MQLXhjlLy1RSEeMPQCJCyV';
-                const metadata = JSON.stringify({ timestamp: Date.now() });
-                
-                const result = await contract.methods.start_consumption(
-                    CHARGER_ID,
-                    providerId,
-                    oracleId,
-                    1000,
-                    metadata
-                );
-
-                const sessionId = result.decodedResult;
-                
-                activeSession = {
-                    id: sessionId,
-                    providerId: providerId,
-                    providerName: providerName,
-                    startTime: Date.now(),
-                    kwhConsumed: 0,
-                    totalCost: 0
-                };
-
-                startTime = Date.now();
-                
-                document.getElementById('sessionId').textContent = `#${sessionId}`;
-                document.getElementById('activeSessionId').textContent = `#${sessionId}`;
-                document.getElementById('activeProvider').textContent = providerName;
-                document.getElementById('noConsumption').classList.add('hidden');
-                document.getElementById('activeConsumption').classList.remove('hidden');
-
-                logToConsole(`Session started: #${sessionId}`);
-                logToConsole(`Tx: ${result.hash.slice(0, 20)}...`);
-                
-                addBlockchainEvent('Session Started', result.hash, 'success');
-
-                startConsumptionUpdates();
-                updateElapsedTime();
-
-            } catch (error) {
-                console.error('Error starting consumption:', error);
-                logToConsole(`Error: ${error.message}`);
-                alert('Failed to start consumption: ' + error.message);
-            }
-        }
-
-        function startConsumptionUpdates() {
-            updateInterval = setInterval(async () => {
-                if (!activeSession) return;
-
-                try {
-                    const increment = Math.floor(Math.random() * 5) + 1;
-                    activeSession.kwhConsumed += increment;
-
-                    logToConsole(`Updating consumption: ${activeSession.kwhConsumed} kWh`);
-                    
-                    const result = await contract.methods.update_consumption_reading(
-                        activeSession.id,
-                        activeSession.kwhConsumed
-                    );
-
-                    document.getElementById('activeKwh').textContent = activeSession.kwhConsumed;
-                    document.getElementById('currentKwh').textContent = `${activeSession.kwhConsumed} kWh`;
-
-                    logToConsole(`Payment processed! Tx: ${result.hash.slice(0, 20)}...`);
-                    addBlockchainEvent(`Payment: ${increment} kWh`, result.hash, 'payment');
-
-                    await loadChargerData();
-
-                } catch (error) {
-                    console.error('Error updating consumption:', error);
-                    logToConsole(`Update failed: ${error.message}`);
-                }
-            }, 15000);
-        }
-
-        function updateElapsedTime() {
-            setInterval(() => {
-                if (!startTime) return;
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                document.getElementById('elapsedTime').textContent = `${elapsed} seconds`;
-            }, 1000);
-        }
-
-        async function stopConsumption() {
-            if (!activeSession || !contract) return;
-
-            try {
-                clearInterval(updateInterval);
-
-                logToConsole('Stopping consumption...');
-
-                const result = await contract.methods.stop_consumption(
-                    activeSession.id,
-                    activeSession.kwhConsumed
-                );
-
-                logToConsole(`Session completed! Tx: ${result.hash.slice(0, 20)}...`);
-                addBlockchainEvent('Session Completed', result.hash, 'success');
-
-                document.getElementById('activeConsumption').classList.add('hidden');
-                document.getElementById('noConsumption').classList.remove('hidden');
-                document.getElementById('sessionId').textContent = 'None';
-
-                activeSession = null;
-                startTime = null;
-
-                await loadChargerData();
-
-            } catch (error) {
-                console.error('Error stopping consumption:', error);
-                logToConsole(`Error: ${error.message}`);
-                alert('Failed to stop consumption: ' + error.message);
-            }
-        }
-
-        async function refillBalance() {
-            if (!contract) {
-                alert('Please connect wallet first');
-                return;
-            }
-
-            try {
-                logToConsole('Refilling charger balance...');
-
-                const result = await contract.methods.fund_charger(CHARGER_ID, {
-                    amount: 1000
-                });
-
-                logToConsole(`Balance refilled! Tx: ${result.hash.slice(0, 20)}...`);
-                addBlockchainEvent('Balance Refilled: 1000 aettos', result.hash, 'success');
-
-                await loadChargerData();
-
-            } catch (error) {
-                console.error('Error refilling balance:', error);
-                logToConsole(`Error: ${error.message}`);
-                alert('Failed to refill: ' + error.message);
-            }
-        }
-
-        function addBlockchainEvent(title, txHash, type) {
+        function addEvent(title, txHash, type) {
             const container = document.getElementById('blockchainEvents');
-            
-            if (container.querySelector('.text-gray-500')) {
-                container.innerHTML = '';
-            }
+            if (container.querySelector('.text-gray-500')) container.innerHTML = '';
 
             const colors = {
                 success: 'bg-green-50 border-green-200 text-green-800',
                 payment: 'bg-purple-50 border-purple-200 text-purple-800',
-                error: 'bg-red-50 border-red-200 text-red-800'
+                info: 'bg-blue-50 border-blue-200 text-blue-800'
             };
 
             const event = document.createElement('div');
             event.className = `${colors[type]} border rounded-lg p-3 text-sm`;
             event.innerHTML = `
                 <p class="font-bold">${title}</p>
-                <a href="https://testnet.aescan.io/transactions/${txHash}" 
-                   target="_blank" 
-                   class="text-xs underline break-all hover:opacity-80">
+                <a href="https://testnet.aescan.io/transactions/${txHash}" target="_blank" class="text-xs underline break-all">
                     ${txHash.slice(0, 30)}...
                 </a>
                 <p class="text-xs mt-1">${new Date().toLocaleTimeString()}</p>
             `;
-
             container.insertBefore(event, container.firstChild);
+            while (container.children.length > 10) container.removeChild(container.lastChild);
+        }
 
-            while (container.children.length > 10) {
-                container.removeChild(container.lastChild);
+        async function initAepp() {
+            log('Initializing SDK...');
+            aeSdk = new AeSdkAepp({
+                name: 'Charger Operator',
+                nodes: [{ name: 'testnet', instance: new Node('https://testnet.aeternity.io') }],
+                compilerUrl: 'https://compiler.aepps.com',
+                onAddressChange: ({ current }) => {
+                    const addr = Object.keys(current)[0];
+                    currentAddress = addr;
+                    document.getElementById('walletAddress').textContent = addr.slice(0, 15) + '...';
+                    if (connected) loadChargerData();
+                },
+                onDisconnect: () => {
+                    connected = false;
+                    currentAddress = undefined;
+                    log('Wallet disconnected');
+                    alert('Wallet disconnected');
+                }
+            });
+            log('SDK initialized successfully');
+        }
+
+        async function connectWallet() {
+            const scanner = new BrowserWindowMessageConnection();
+            let stopped = false;
+
+            const handleWallets = async ({ wallets, newWallet }) => {
+                if (stopped) return;
+                const wallet = newWallet || Object.values(wallets)[0];
+                stopped = true;
+                stopScan?.();
+
+                try {
+                    log('Connecting to wallet...');
+                    await aeSdk.connectToWallet(wallet.getConnection(), { connectNode: true, name: 'wallet-node', select: true });
+                    await new Promise(r => setTimeout(r, 150));
+
+                    const { address: { current } } = await aeSdk.subscribeAddress('subscribe', 'connected');
+                    const addr = Object.keys(current)[0];
+                    currentAddress = addr;
+                    connected = true;
+
+                    document.getElementById('connectionStatus').className = 'w-3 h-3 rounded-full bg-green-500';
+                    document.getElementById('connectionText').textContent = 'Connected';
+                    document.getElementById('walletInfo').classList.remove('hidden');
+                    document.getElementById('walletAddress').textContent = addr.slice(0, 15) + '...';
+                    document.getElementById('connectWallet').disabled = true;
+
+                    log(`Wallet connected: ${addr.slice(0, 15)}...`);
+                    log('Contract ready - using direct calls');
+                    
+                    contract = {
+                        address: CONTRACT_ADDRESS,
+                        
+                        get_charger_info: async (chargerId) => {
+                            const result = await aeSdk.contractCall(CONTRACT_ADDRESS, 'get_charger_info', [chargerId]);
+                            return result;
+                        },
+                        
+                        get_charger_balance: async (chargerId) => {
+                            const result = await aeSdk.contractCall(CONTRACT_ADDRESS, 'get_charger_balance', [chargerId]);
+                            return result;
+                        },
+                        
+                        register_charger: async (chargerId, location, initialBalance, options = {}) => {
+                            const result = await aeSdk.contractCall(CONTRACT_ADDRESS, 'register_charger', [chargerId, location, initialBalance], options);
+                            return result;
+                        },
+                        
+                        fund_charger: async (chargerId, options = {}) => {
+                            const result = await aeSdk.contractCall(CONTRACT_ADDRESS, 'fund_charger', [chargerId], options);
+                            return result;
+                        },
+                        
+                        get_provider_info: async (providerId) => {
+                            const result = await aeSdk.contractCall(CONTRACT_ADDRESS, 'get_provider_info', [providerId]);
+                            return result;
+                        },
+                        
+                        start_consumption: async (chargerId, providerId, oracleId, estimatedKwh, metadata, options = {}) => {
+                            const result = await aeSdk.contractCall(CONTRACT_ADDRESS, 'start_consumption', 
+                                [chargerId, providerId, oracleId, estimatedKwh, metadata], options);
+                            return result;
+                        },
+                        
+                        update_consumption_reading: async (sessionId, kwhReading, options = {}) => {
+                            const result = await aeSdk.contractCall(CONTRACT_ADDRESS, 'update_consumption_reading', 
+                                [sessionId, kwhReading], options);
+                            return result;
+                        },
+                        
+                        stop_consumption: async (sessionId, finalKwh, options = {}) => {
+                            const result = await aeSdk.contractCall(CONTRACT_ADDRESS, 'stop_consumption', 
+                                [sessionId, finalKwh], options);
+                            return result;
+                        },
+                        
+                        get_session: async (sessionId) => {
+                            const result = await aeSdk.contractCall(CONTRACT_ADDRESS, 'get_session', [sessionId]);
+                            return result;
+                        }
+                    };
+                    
+                    log('Contract wrapper created successfully');
+                    await loadChargerData();
+                    await loadProviders();
+
+                } catch (err) {
+                    log(`Connection error: ${err.message}`);
+                    alert(`Connection failed: ${err.message}`);
+                }
+            };
+
+            stopScan = walletDetector(scanner, handleWallets);
+        }
+
+        async function ensureChargerRegistered() {
+            try {
+                log('Checking if charger exists...');
+                const result = await contract.get_charger_info(CHARGER_ID);
+                const decoded = await result.decode();
+                log(`Charger found`);
+                return true;
+            } catch (e) {
+                log('Charger not found, registering...');
+                try {
+                    const tx = await contract.register_charger(CHARGER_ID, CHARGER_LOCATION, 0, { amount: 0 });
+                    log('Waiting for registration...');
+                    await new Promise(r => setTimeout(r, 2000));
+                    log('Charger registered successfully');
+                    addEvent('Charger Registered', tx.hash, 'success');
+                    return true;
+                } catch (regError) {
+                    log(`Registration error: ${regError.message}`);
+                    return false;
+                }
             }
         }
 
-        function logToConsole(message) {
-            const consoleEl = document.getElementById('console');
-            const timestamp = new Date().toLocaleTimeString();
-            const line = document.createElement('p');
-            line.textContent = `[${timestamp}] ${message}`;
-            consoleEl.insertBefore(line, consoleEl.firstChild);
-            
-            while (consoleEl.children.length > 30) {
-                consoleEl.removeChild(consoleEl.lastChild);
+        async function loadChargerData() {
+            try {
+                log('Loading charger info...');
+                
+                const infoResult = await contract.get_charger_info(CHARGER_ID);
+                const chargerInfo = await infoResult.decode();
+                
+                if (chargerInfo && chargerInfo.Some) {
+                    const info = chargerInfo.Some[0];
+                    document.getElementById('chargerBalance').textContent = `${info.balance} aettos`;
+                    document.getElementById('totalKwh').textContent = `${info.total_kwh_consumed} kWh`;
+                    document.getElementById('totalPaid').textContent = `${info.total_paid} aettos`;
+                    log(`Balance: ${info.balance} aettos | Total consumed: ${info.total_kwh_consumed} kWh`);
+                } else {
+                    log('Charger not found in contract, attempting registration...');
+                    const registered = await ensureChargerRegistered();
+                    if (registered) {
+                        setTimeout(() => loadChargerData(), 2000);
+                    }
+                }
+            } catch (e) {
+                log(`Load error: ${e.message}`);
+                document.getElementById('chargerBalance').textContent = '0 aettos';
+                
+                if (e.message.includes('None') || e.message.includes('not found')) {
+                    log('Attempting to register charger...');
+                    const registered = await ensureChargerRegistered();
+                    if (registered) {
+                        setTimeout(() => loadChargerData(), 2000);
+                    }
+                }
             }
         }
 
-        window.addEventListener('load', () => {
-            logToConsole('System initialized');
-            logToConsole('Click "Connect Superhero Wallet" to start');
+        async function loadProviders() {
+            const providers = [
+                { id: 'provider_001', name: 'PowerCo Energy', rate: 50 },
+                { id: 'provider_002', name: 'GreenEnergy', rate: 45 }
+            ];
+
+            const container = document.getElementById('providers');
+            container.innerHTML = '';
+
+            for (const p of providers) {
+                try {
+                    const result = await contract.get_provider_info(p.id);
+                    const providerInfo = await result.decode();
+                    
+                    let displayRate = p.rate;
+                    if (providerInfo && providerInfo.Some) {
+                        displayRate = providerInfo.Some[0].price_per_kwh;
+                    }
+                    
+                    const div = document.createElement('div');
+                    div.className = 'border-2 border-gray-200 rounded-xl p-4 hover:border-purple-400 transition';
+                    div.innerHTML = `
+                        <h3 class="font-bold text-gray-800 mb-2">${p.name}</h3>
+                        <p class="text-sm text-gray-600 mb-3">Rate: ${displayRate} aettos/kWh</p>
+                        <button class="start-btn w-full py-2 bg-purple-500 text-white rounded-lg font-bold hover:bg-purple-600" 
+                                data-provider="${p.id}" data-name="${p.name}" data-rate="${displayRate}">
+                            ⚡ Start Consuming
+                        </button>
+                    `;
+                    container.appendChild(div);
+                } catch (e) {
+                    log(`Provider ${p.id} not found, using default info`);
+                    const div = document.createElement('div');
+                    div.className = 'border-2 border-gray-200 rounded-xl p-4 hover:border-purple-400 transition';
+                    div.innerHTML = `
+                        <h3 class="font-bold text-gray-800 mb-2">${p.name}</h3>
+                        <p class="text-sm text-gray-600 mb-3">Rate: ${p.rate} aettos/kWh</p>
+                        <button class="start-btn w-full py-2 bg-purple-500 text-white rounded-lg font-bold hover:bg-purple-600" 
+                                data-provider="${p.id}" data-name="${p.name}" data-rate="${p.rate}">
+                            ⚡ Start Consuming
+                        </button>
+                    `;
+                    container.appendChild(div);
+                }
+            }
+
+            document.querySelectorAll('.start-btn').forEach(btn => {
+                btn.addEventListener('click', () => startConsumption(btn.dataset.provider, btn.dataset.name, btn.dataset.rate));
+            });
+        }
+
+        async function startConsumption(providerId, providerName, rate) {
+            if (!contract) { alert('Connect wallet first'); return; }
+
+            try {
+                log('Starting consumption session...');
+                const oracleId = 'ok_2t3TRitMLf3W5HXk5TxH32HYvLi9LrQ8MQLXhjlLy1RSEeMPQCJCyV';
+                const estimatedKwh = 100;
+                const metadata = JSON.stringify({ 
+                    timestamp: Date.now(),
+                    charger: CHARGER_ID,
+                    provider: providerId 
+                });
+                
+                const result = await contract.start_consumption(CHARGER_ID, providerId, oracleId, estimatedKwh, metadata);
+                log('Waiting for session to start...');
+                await new Promise(r => setTimeout(r, 2000));
+                
+                const sessionId = await result.decode();
+                
+                activeSession = { 
+                    id: sessionId, 
+                    providerId, 
+                    providerName, 
+                    rate: parseInt(rate),
+                    kwhConsumed: 0,
+                    totalCost: 0
+                };
+                startTime = Date.now();
+                
+                document.getElementById('activeSessionId').textContent = `#${sessionId}`;
+                document.getElementById('activeProvider').textContent = providerName;
+                document.getElementById('activeRate').textContent = rate;
+                document.getElementById('noConsumption').classList.add('hidden');
+                document.getElementById('activeConsumption').classList.remove('hidden');
+
+                log(`Session #${sessionId} started successfully`);
+                addEvent('Session Started', result.hash, 'success');
+
+                updateInterval = setInterval(async () => {
+                    if (!activeSession) return;
+                    try {
+                        const increment = Math.floor(Math.random() * 3) + 1;
+                        activeSession.kwhConsumed += increment;
+                        const costIncrement = increment * activeSession.rate;
+                        activeSession.totalCost += costIncrement;
+
+                        log(`Updating: ${activeSession.kwhConsumed} kWh (+${increment} kWh, +${costIncrement} aettos)`);
+                        const result = await contract.update_consumption_reading(activeSession.id, activeSession.kwhConsumed);
+                        
+                        await new Promise(r => setTimeout(r, 1500));
+
+                        document.getElementById('activeKwh').textContent = activeSession.kwhConsumed;
+                        document.getElementById('activeCost').textContent = `${activeSession.totalCost} aettos`;
+                        document.getElementById('currentKwh').textContent = `${activeSession.kwhConsumed} kWh`;
+
+                        log('Payment processed successfully');
+                        addEvent(`Payment: ${increment} kWh (${costIncrement} aettos)`, result.hash, 'payment');
+                        
+                        await loadChargerData();
+                    } catch (e) {
+                        log(`Update error: ${e.message}`);
+                        if (e.message.includes('INSUFFICIENT_BALANCE') || e.message.includes('balance')) {
+                            clearInterval(updateInterval);
+                            alert('Insufficient balance! Please refill your charger.');
+                        }
+                    }
+                }, 15000);
+
+                setInterval(() => {
+                    if (!startTime) return;
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    document.getElementById('elapsedTime').textContent = `${elapsed} seconds`;
+                }, 1000);
+
+            } catch (e) {
+                log(`Start session error: ${e.message}`);
+                alert(`Failed to start session: ${e.message}`);
+            }
+        }
+
+        document.getElementById('stopBtn').addEventListener('click', async () => {
+            if (!activeSession || !contract) return;
+            try {
+                clearInterval(updateInterval);
+                log('Stopping session...');
+                const result = await contract.stop_consumption(activeSession.id, activeSession.kwhConsumed);
+                
+                await new Promise(r => setTimeout(r, 2000));
+                
+                log('Session completed successfully');
+                addEvent(`Session Completed: ${activeSession.kwhConsumed} kWh`, result.hash, 'success');
+
+                document.getElementById('activeConsumption').classList.add('hidden');
+                document.getElementById('noConsumption').classList.remove('hidden');
+                document.getElementById('currentKwh').textContent = '0 kWh';
+                activeSession = null;
+                startTime = null;
+                
+                await loadChargerData();
+            } catch (e) {
+                log(`Stop error: ${e.message}`);
+                alert(`Failed to stop session: ${e.message}`);
+            }
+        });
+
+        document.getElementById('refillBtn').addEventListener('click', async () => {
+            if (!contract) { alert('Connect wallet first'); return; }
+            try {
+                log('Refilling charger with 1000 aettos...');
+                const result = await contract.fund_charger(CHARGER_ID, { amount: 1000 });
+                
+                await new Promise(r => setTimeout(r, 2000));
+                
+                log('Refill successful!');
+                addEvent('Refilled: +1000 aettos', result.hash, 'success');
+                
+                await loadChargerData();
+            } catch (e) {
+                log(`Refill error: ${e.message}`);
+                alert(`Failed to refill: ${e.message}`);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!window.Aeternity) {
+                log('ERROR: SDK not loaded');
+                return;
+            }
+            await initAepp();
+            document.getElementById('connectWallet').addEventListener('click', connectWallet);
+            log('Ready. Click Connect Wallet to begin');
         });
     </script>
 </body>
