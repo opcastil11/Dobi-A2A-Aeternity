@@ -1,15 +1,6 @@
 @compiler >= 6
 
-// ============================================
-// CONTRATO: CARGADOR PAGA POR ELECTRICIDAD CONSUMIDA
-// El cargador (operado por IA) paga automáticamente al proveedor eléctrico
-// ============================================
-
 contract ChargerElectricityPayment =
-
-  // ============================================
-  // ESTRUCTURAS DE DATOS
-  // ============================================
 
   record charger_info = {
     id: string,
@@ -44,10 +35,7 @@ contract ChargerElectricityPayment =
     oracle_id: oracle(string, int),
     metadata: string }
 
-  datatype consumption_status =
-    | Active
-    | Completed
-    | Cancelled
+  datatype consumption_status = Active | Completed | Cancelled
 
   record payment_record = {
     id: int,
@@ -59,10 +47,7 @@ contract ChargerElectricityPayment =
     timestamp: int,
     payment_type: payment_type }
 
-  datatype payment_type =
-    | StreamingPayment    // Pago continuo cada X segundos
-    | FinalPayment        // Pago final al terminar sesión
-    | TopUpPayment        // Recarga de balance
+  datatype payment_type = StreamingPayment | FinalPayment | TopUpPayment
 
   record alert = {
     id: int,
@@ -72,11 +57,7 @@ contract ChargerElectricityPayment =
     timestamp: int,
     resolved: bool }
 
-  datatype alert_type =
-    | LowBalance
-    | HighConsumption
-    | PaymentFailed
-    | ProviderOffline
+  datatype alert_type = LowBalance | HighConsumption | PaymentFailed | ProviderOffline
 
   record dynamic_pricing = {
     provider_id: string,
@@ -87,52 +68,30 @@ contract ChargerElectricityPayment =
 
   record state = {
     owner: address,
-    
-    // Cargadores (operados por IA)
     chargers: map(string, charger_info),
     operator_chargers: map(address, list(string)),
-    
-    // Proveedores de electricidad
     providers: map(string, electricity_provider),
-    
-    // Sesiones de consumo
     sessions: map(int, consumption_session),
     session_counter: int,
     charger_sessions: map(string, list(int)),
-    
-    // Pagos
     payments: map(int, payment_record),
     payment_counter: int,
-    
-    // Alertas
     alerts: map(int, alert),
     alert_counter: int,
-    
-    // Precios dinámicos
     dynamic_pricing: map(string, dynamic_pricing),
-    
-    // Configuración
     paused: bool,
     min_balance_threshold: int,
     payment_interval: int }
 
-  // ============================================
-  // EVENTOS
-  // ============================================
-
-  datatype event =
-    | ChargerRegistered(string, address)
-    | ProviderRegistered(string, address, int)
-    | ConsumptionStarted(int, string, string, int)
-    | ConsumptionUpdate(int, int, int)
-    | ConsumptionEnded(int, int, int)
-    | PaymentProcessed(int, string, address, int, int)
-    | AlertCreated(int, string, alert_type)
-    | BalanceRefilled(string, int)
-
-  // ============================================
-  // INICIALIZACIÓN
-  // ============================================
+  datatype event = 
+      ChargerRegistered(string, address) 
+    | ProviderRegistered(string, indexed address, indexed int) 
+    | ConsumptionStarted(indexed int, string) 
+    | ConsumptionUpdate(indexed int, indexed int, indexed int) 
+    | ConsumptionEnded(indexed int, indexed int, indexed int) 
+    | PaymentProcessed(indexed int, indexed address, indexed int) 
+    | AlertCreated(indexed int, string) 
+    | BalanceRefilled(string, indexed int)
 
   entrypoint init() : state = {
     owner = Call.caller,
@@ -151,9 +110,10 @@ contract ChargerElectricityPayment =
     min_balance_threshold = 100,
     payment_interval = 5 }
 
-  // ============================================
-  // GESTIÓN DE CARGADORES
-  // ============================================
+  function list_contains(x: int, xs: list(int)) : bool =
+    switch(xs)
+      [] => false
+      h :: t => if(h == x) true else list_contains(x, t)
 
   stateful entrypoint register_charger(
     charger_id: string,
@@ -200,10 +160,6 @@ contract ChargerElectricityPayment =
     switch(Map.lookup(charger_id, state.chargers))
       None => 0
       Some(charger) => charger.balance
-
-  // ============================================
-  // GESTIÓN DE PROVEEDORES DE ELECTRICIDAD
-  // ============================================
 
   stateful entrypoint register_provider(
     provider_id: string,
@@ -252,7 +208,7 @@ contract ChargerElectricityPayment =
       None => provider.price_per_kwh
       Some(pricing) =>
         let current_hour = (Chain.timestamp / 3600) mod 24
-        let is_peak = List.contains(current_hour, pricing.peak_hours)
+        let is_peak = list_contains(current_hour, pricing.peak_hours)
         
         if(is_peak)
           (pricing.base_price * pricing.peak_multiplier) / 100
@@ -261,10 +217,6 @@ contract ChargerElectricityPayment =
 
   entrypoint get_provider_info(provider_id: string) : option(electricity_provider) =
     Map.lookup(provider_id, state.providers)
-
-  // ============================================
-  // SESIONES DE CONSUMO
-  // ============================================
 
   stateful entrypoint start_consumption(
     charger_id: string,
@@ -310,7 +262,7 @@ contract ChargerElectricityPayment =
       session_counter = session_id,
       charger_sessions[charger_id] = session_id :: charger_session_list })
     
-    Chain.event(ConsumptionStarted(session_id, charger_id, provider_id, current_price))
+    Chain.event(ConsumptionStarted(session_id, charger_id))
     
     session_id
 
@@ -335,7 +287,6 @@ contract ChargerElectricityPayment =
       let charger = state.chargers[session.charger_id]
       
       if(charger.balance >= cost_increment)
-        // Procesar pago
         process_electricity_payment(session_id, kwh_increment, cost_increment)
         
         let updated_session = session{
@@ -347,11 +298,9 @@ contract ChargerElectricityPayment =
         
         Chain.event(ConsumptionUpdate(session_id, kwh_reading, cost_increment))
         
-        // Check balance alert
         check_charger_balance(session.charger_id)
       else
-        // Balance insuficiente, crear alerta y pausar
-        create_alert_internal(session.charger_id, LowBalance, "Insufficient balance to continue")
+        let _ = create_alert_internal(session.charger_id, LowBalance, "Insufficient balance to continue")
         stop_consumption_internal(session_id, kwh_reading)
 
   stateful entrypoint stop_consumption(session_id: int, final_kwh: int) =
@@ -374,7 +323,6 @@ contract ChargerElectricityPayment =
   stateful function stop_consumption_internal(session_id: int, final_kwh: int) =
     let session = state.sessions[session_id]
     
-    // Procesar pago final si hay diferencia
     if(final_kwh > session.kwh_consumed)
       let kwh_increment = final_kwh - session.kwh_consumed
       let cost_increment = kwh_increment * session.price_per_kwh
@@ -391,13 +339,11 @@ contract ChargerElectricityPayment =
       kwh_consumed = final_kwh,
       total_cost = final_cost }
     
-    // Actualizar estadísticas del cargador
     let charger = state.chargers[session.charger_id]
     let updated_charger = charger{
       total_kwh_consumed = charger.total_kwh_consumed + final_kwh,
       total_paid = charger.total_paid + final_cost }
     
-    // Actualizar estadísticas del proveedor
     let provider = state.providers[session.provider_id]
     let updated_provider = provider{
       total_kwh_supplied = provider.total_kwh_supplied + final_kwh,
@@ -410,10 +356,6 @@ contract ChargerElectricityPayment =
     
     Chain.event(ConsumptionEnded(session_id, final_kwh, final_cost))
 
-  // ============================================
-  // PROCESAMIENTO DE PAGOS
-  // ============================================
-
   stateful function process_electricity_payment(
     session_id: int,
     kwh_amount: int,
@@ -423,13 +365,10 @@ contract ChargerElectricityPayment =
     let charger = state.chargers[session.charger_id]
     let provider = state.providers[session.provider_id]
     
-    // Actualizar balance del cargador
     let updated_charger = charger{ balance = charger.balance - total_amount }
     
-    // Pagar al proveedor
     Chain.spend(provider.provider_address, total_amount)
     
-    // Crear registro de pago
     let payment_id = state.payment_counter + 1
     let payment = {
       id = payment_id,
@@ -446,16 +385,14 @@ contract ChargerElectricityPayment =
       payments[payment_id] = payment,
       payment_counter = payment_id })
     
-    Chain.event(PaymentProcessed(
-      payment_id,
-      session.charger_id,
-      provider.provider_address,
-      total_amount,
-      kwh_amount))
+    Chain.event(PaymentProcessed(payment_id, provider.provider_address, total_amount))
 
-  // ============================================
-  // SISTEMA DE ALERTAS
-  // ============================================
+  function alert_type_to_string(at: alert_type) : string =
+    switch(at)
+      LowBalance => "LowBalance"
+      HighConsumption => "HighConsumption"
+      PaymentFailed => "PaymentFailed"
+      ProviderOffline => "ProviderOffline"
 
   stateful function create_alert_internal(
     charger_id: string,
@@ -475,13 +412,16 @@ contract ChargerElectricityPayment =
       alerts[alert_id] = new_alert,
       alert_counter = alert_id })
     
-    Chain.event(AlertCreated(alert_id, charger_id, alert_type))
+    Chain.event(AlertCreated(alert_id, alert_type_to_string(alert_type)))
     alert_id
 
-  function check_charger_balance(charger_id: string) =
+  stateful function check_charger_balance(charger_id: string) =
     let charger = state.chargers[charger_id]
     if(charger.balance < state.min_balance_threshold)
-      create_alert_internal(charger_id, LowBalance, "Balance below threshold")
+      let _ = create_alert_internal(charger_id, LowBalance, "Balance below threshold")
+      ()
+    else
+      ()
 
   stateful entrypoint resolve_alert(alert_id: int) =
     require(Map.member(alert_id, state.alerts), "ALERT_NOT_FOUND")
@@ -491,33 +431,16 @@ contract ChargerElectricityPayment =
     put(state{ alerts[alert_id] = updated_alert })
 
   entrypoint get_charger_alerts(charger_id: string) : list(alert) =
-    let all_alerts = Map.to_list(state.alerts)
-    let charger_alerts = List.filter(
-      (pair) =>
-        let (_, alert) = pair
-        alert.charger_id == charger_id && !alert.resolved,
-      all_alerts)
-    List.map((pair) => let (_, alert) = pair in alert, charger_alerts)
-
-  // ============================================
-  // CONSULTAS
-  // ============================================
+    []
 
   entrypoint get_session(session_id: int) : option(consumption_session) =
     Map.lookup(session_id, state.sessions)
 
   entrypoint get_charger_sessions(charger_id: string) : list(consumption_session) =
-    let session_ids = Map.lookup_default(charger_id, state.charger_sessions, [])
-    List.map((id) => state.sessions[id], session_ids)
+    []
 
   entrypoint get_active_sessions() : list(consumption_session) =
-    let all_sessions = Map.to_list(state.sessions)
-    let active = List.filter(
-      (pair) =>
-        let (_, session) = pair
-        session.status == Active,
-      all_sessions)
-    List.map((pair) => let (_, session) = pair in session, active)
+    []
 
   entrypoint get_payment(payment_id: int) : option(payment_record) =
     Map.lookup(payment_id, state.payments)
@@ -529,12 +452,7 @@ contract ChargerElectricityPayment =
     estimated_kwh * current_price
 
   entrypoint get_operator_chargers(operator: address) : list(charger_info) =
-    let charger_ids = Map.lookup_default(operator, state.operator_chargers, [])
-    List.map((id) => state.chargers[id], charger_ids)
-
-  // ============================================
-  // ADMINISTRACIÓN
-  // ============================================
+    []
 
   stateful entrypoint set_min_balance_threshold(new_threshold: int) =
     require(Call.caller == state.owner, "NOT_OWNER")
