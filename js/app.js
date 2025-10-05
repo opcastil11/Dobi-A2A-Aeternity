@@ -5,14 +5,14 @@ const {
   walletDetector,
 } = window.Aeternity;
 
-// Nodos y compiler recomendados por la guía
+// Nodes and compiler recommended by the guide
 const TESTNET_NODE_URL = 'https://testnet.aeternity.io';
 const MAINNET_NODE_URL = 'https://mainnet.aeternity.io';
-const COMPILER_URL = 'https://compiler.aepps.com'; // público
+const COMPILER_URL = 'https://compiler.aepps.com'; // public
 
 // ===== On-chain config =====
-const CONTRACT_SOURCE_URL = '/AIPaymentManager.aes';     // servido por tu server estático
-let CONTRACT_ADDRESS = localStorage.getItem('contract_addr') || ''; // pega aquí la que desplegaste si quieres fijo
+const CONTRACT_SOURCE_URL = '/AIPaymentManager.aes';     // served by your static server
+let CONTRACT_ADDRESS = localStorage.getItem('contract_addr') || ''; // paste here the one you deployed if you want it fixed
 
 function setContractAddress(addr) {
   CONTRACT_ADDRESS = addr;
@@ -21,16 +21,16 @@ function setContractAddress(addr) {
   if (el) el.textContent = addr || '-';
 }
 
-// Establecer la dirección del contrato desplegado
+// Set the deployed contract address
 setContractAddress('ct_gWCgyfWtVYAYXD2zwPQHxLK6btmvjhPhZE9XVmSzpaVNVPjb7');
-// Ref: guía oficial de conexión (constantes / init / scan).  // docs citadas en el mensaje
+// Ref: official connection guide (constants / init / scan).  // docs cited in the message
 
 let aeSdk;
 let stopScan;
 let connected = false;
 let currentAddress;
 
-// Helpers UI
+// UI Helpers
 const $ = (sel) => document.querySelector(sel);
 const setWalletText = (t) => ($('#wallet-text').textContent = t);
 const setOwner = (addr) => { const el = $('#summary-owner'); if (el) el.textContent = addr || '-'; };
@@ -41,7 +41,7 @@ const setBalance = (ae) => {
 const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 async function initAepp() {
-  console.log('🚀 Inicializando Aeternity SDK...');
+  console.log('🚀 Initializing Aeternity SDK...');
   aeSdk = new AeSdkAepp({
     name: 'Dobi Protocol',
     nodes: [
@@ -50,81 +50,81 @@ async function initAepp() {
     ],
     compilerUrl: COMPILER_URL,
     onNetworkChange: async ({ networkId }) => {
-      console.log('🌐 Cambio de red detectado:', networkId);
-      // Selecciona automáticamente el nodo que coincide con el network del wallet
+      console.log('🌐 Network change detected:', networkId);
+      // Automatically select the node that matches the wallet network
       const [{ name }] = (await aeSdk.getNodesInPool())
         .filter((n) => n.nodeNetworkId === networkId);
       aeSdk.selectNode(name);
       const el = $('#summary-network');
       if (el) el.textContent = name === 'mainnet' ? 'Aeternity Mainnet' : 'Aeternity Testnet';
-      console.log('✅ Nodo seleccionado:', name);
+      console.log('✅ Node selected:', name);
     },
     onAddressChange: ({ current }) => {
       const addr = Object.keys(current)[0];
-      console.log('👤 Cambio de dirección:', addr);
+      console.log('👤 Address change:', addr);
       currentAddress = addr;
       setWalletText(short(addr));
       setOwner(addr);
       if (connected) updateBalance();
     },
     onDisconnect: () => {
-      console.log('❌ Wallet desconectada');
+      console.log('❌ Wallet disconnected');
       connected = false;
       currentAddress = undefined;
       setWalletText('Connect Wallet');
       setOwner('-');
       setBalance('0');
-      alert('Wallet desconectada');
+      alert('Wallet disconnected');
     },
   });
-  console.log('✅ Aeternity SDK inicializado');
+  console.log('✅ Aeternity SDK initialized');
 }
 
 // ===== Contract lazy init =====
-let ct; // instancia del contrato
+let ct; // contract instance
 
 async function getContract() {
   if (ct) return ct;
-  if (!CONTRACT_ADDRESS) throw new Error('CONTRACT_ADDRESS vacío. Usa setContractAddress("ct_...").');
+  if (!CONTRACT_ADDRESS) throw new Error('CONTRACT_ADDRESS empty. Use setContractAddress("ct_...").');
 
   const res = await fetch(CONTRACT_SOURCE_URL);
-  if (!res.ok) throw new Error(`No pude leer ${CONTRACT_SOURCE_URL} (${res.status})`);
+  if (!res.ok) throw new Error(`Could not read ${CONTRACT_SOURCE_URL} (${res.status})`);
   const sourceCode = await res.text();
 
-  // v14 en navegador: initializeContract; fallback a Contract.initialize si hiciera falta
+  // v14 in browser: initializeContract; fallback to Contract.initialize if needed
   if (typeof aeSdk.initializeContract === 'function') {
     ct = await aeSdk.initializeContract({ sourceCode, address: CONTRACT_ADDRESS });
   } else if (window.Aeternity?.Contract?.initialize) {
-    // fallback (misma API que usas en deploy.js del lado Node)
+    // fallback (same API you use in deploy.js on Node side)
     ct = await window.Aeternity.Contract.initialize({
       ...aeSdk.getContext?.(),
       sourceCode,
       address: CONTRACT_ADDRESS,
     });
   } else {
-    throw new Error('Tu SDK no expone initializeContract ni Contract.initialize');
+    throw new Error('Your SDK does not expose initializeContract or Contract.initialize');
   }
   return ct;
 }
 
-// ===== unidades y conversiones =====
-// Usaremos enteros: kWh_int := kWh * 1000 (milli-kWh). Precios/costos en aettos (1 AE = 1e18 aettos).
+// ===== units and conversions =====
+// We will use integers: kWh_int := kWh * 1000 (milli-kWh). Prices/costs in aettos (1 AE = 1e18 aettos).
 const toAettos = (ae) => BigInt(Math.round(Number(ae) * 1e18));
 const fromAettos = (aettos) => Number(aettos) / 1e18;
 const kwhToInt = (kwh) => Math.max(0, Math.round(Number(kwh) * 1000)); // mWh
 const intToKwh = (n) => Number(n) / 1000;
 
-// Proveedor: un ID "legible". Por defecto, derivamos del address destino.
+// Provider: a "readable" ID. By default, we derive from the destination address.
 function deriveProviderId(payeeAddress) {
   return `prov_${(payeeAddress || 'ak_utility_mock').slice(-8)}`;
 }
 
-// Oráculo en Sophia: espera tipo oracle(string,int) => ID "ok_..."
-// Si el usuario pone una ak_, la tratamos como mock y advertimos.
+// Oracle in Sophia: expects type oracle(string,int) => ID "ok_..."
+// If the user enters an ak_, we treat it as mock and warn.
 function getOracleIdFromUI() {
   const raw = (ui.agent?.utility?.value || '').trim();
-  if (raw.startsWith('ok_')) return raw;          // OK real
-  if (raw.startsWith('ak_')) return 'ok_mock';    // placeholder mientras no registres oráculo on-chain
+  if (raw.startsWith('ok_')) return raw;          // real OK
+  if (raw.startsWith('ak_')) return 'ok_mock';    // placeholder while you don't register oracle on-chain
   return raw || 'ok_mock';
 }
 
@@ -168,17 +168,17 @@ async function connectWallet() {
     stopScan?.();
 
     try {
-      // 🔧 Conéctate al nodo del wallet (evita mismatch de red/latencia)
+      // 🔧 Connect to wallet node (avoids network/latency mismatch)
       await aeSdk.connectToWallet(wallet.getConnection(), {
         connectNode: true,
         name: 'wallet-node',
         select: true,
       });
 
-      // Espera un tick para que el wallet termine de "armarse" tras el unlock
+      // Wait a tick for the wallet to finish "setting up" after unlock
       await new Promise(r => setTimeout(r, 150));
 
-      // ⚠️ Esta llamada era donde explotaba: ahora la envolvemos
+      // ⚠️ This call was where it exploded: now we wrap it
       const { address: { current } } =
         await aeSdk.subscribeAddress('subscribe', 'connected');
 
@@ -196,21 +196,21 @@ async function connectWallet() {
       setBalance('0');
       alert(`Wallet error: ${err?.message || err}`);
 
-      // Reintento único (p. ej., si el unlock tardó un poco)
+      // Single retry (e.g., if unlock took a bit longer)
       setTimeout(() => {
         if (!connected) connectWallet();
       }, 500);
     }
   };
 
-  // Inicia el detector y guarda el stopper
+  // Start the detector and save the stopper
   stopScan = walletDetector(scanner, handleWallets);
 
-  // Fallback si no se detecta wallet
+  // Fallback if wallet not detected
   setTimeout(() => {
     if (!connected && !stopped) {
       stopScan?.();
-      alert('No se detectó Superhero Wallet. ¿Está instalada y habilitada?');
+      alert('Superhero Wallet not detected. Is it installed and enabled?');
     }
   }, 6000);
 }
@@ -222,56 +222,56 @@ async function updateBalance() {
     const ae = (Number(BigInt(aettos)) / 1e18).toFixed(4);
     setBalance(ae);
   } catch (e) {
-    console.warn('No se pudo obtener balance:', e);
+    console.warn('Could not get balance:', e);
     setBalance('0');
   }
 }
 
 // Hook UI
 document.addEventListener('DOMContentLoaded', async () => {
-  // Verificar que el SDK esté cargado
+  // Verify that SDK is loaded
   if (!window.Aeternity) {
-    console.error('Aeternity SDK no está cargado');
-    document.body.innerHTML = '<div style="color: white; text-align: center; padding: 50px;">Error: Aeternity SDK no se pudo cargar. Por favor, recarga la página.</div>';
+    console.error('Aeternity SDK is not loaded');
+    document.body.innerHTML = '<div style="color: white; text-align: center; padding: 50px;">Error: Aeternity SDK could not be loaded. Please reload the page.</div>';
     return;
   }
 
-  // Protección contra conflictos con window.ethereum
+  // Protection against conflicts with window.ethereum
   try {
     const ethereumDesc = Object.getOwnPropertyDescriptor(window, 'ethereum');
     if (ethereumDesc && !ethereumDesc.configurable) {
-      console.warn('window.ethereum ya está definido y no es configurable. Esto puede causar conflictos.');
+      console.warn('window.ethereum is already defined and not configurable. This may cause conflicts.');
     }
   } catch (e) {
-    console.warn('Error verificando window.ethereum:', e);
+    console.warn('Error checking window.ethereum:', e);
   }
 
   await initAepp();
   $('#connect-wallet').addEventListener('click', async () => {
     if (!connected) {
-      setWalletText('Conectando...');
+      setWalletText('Connecting...');
       await connectWallet();
     } else {
-      alert('Ya estás conectado. (Puedes desconectar desde la extensión.)');
+      alert('You are already connected. (You can disconnect from the extension.)');
     }
   });
 
-  // Botones de tu UI que ya existen:
+  // Your existing UI buttons:
   $('#hero-create-btn')?.addEventListener('click', () => $('#create-page')?.classList.add('active'));
   $('#hero-devices-btn')?.addEventListener('click', () => $('#devices-page')?.classList.add('active'));
 });
 
-/***** MOCK: estaciones de carga *****/
+/***** MOCK: charging stations *****/
 const mockStations = [
   {
     id: 'ST-001',
-    name: 'Dobi Station - Centro',
-    location: 'Av. Libertador 123, Santiago',
+    name: 'Dobi Station - Center',
+    location: 'Libertador Ave 123, Santiago',
     status: 'available',
     powerKw: 22,
     priceAEkWh: 0.12,
     connectors: ['Type2', 'CCS2'],
-    description: 'Punto público en estacionamiento subterráneo',
+    description: 'Public point in underground parking',
     type: 'charger',
     payments: [],
   },
@@ -283,7 +283,7 @@ const mockStations = [
     powerKw: 50,
     priceAEkWh: 0.15,
     connectors: ['CCS2', 'CHAdeMO'],
-    description: 'Rápida DC, 50kW',
+    description: 'Fast DC, 50kW',
     type: 'charger',
     payments: [],
   },
@@ -295,7 +295,7 @@ const mockStations = [
     powerKw: 7,
     priceAEkWh: 0.10,
     connectors: ['Type2'],
-    description: 'Carga lenta residencial',
+    description: 'Residential slow charging',
     type: 'charger',
     payments: [],
   },
@@ -389,7 +389,7 @@ function shortAddr(a) {
   return a.length > 14 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a;
 }
 
-/***** Render listado de estaciones *****/
+/***** Render stations list *****/
 function renderDevicesList() {
   const container = ui.lists.devices;
   if (!container) return;
@@ -421,7 +421,7 @@ function renderDevicesList() {
     container.appendChild(card);
   });
 
-  // delegación: abrir detalle
+  // delegation: open detail
   container.querySelectorAll('button[data-open]').forEach(btn => {
     btn.addEventListener('click', e => {
       const id = e.currentTarget.getAttribute('data-open');
@@ -436,13 +436,13 @@ function renderStats() {
   if (ui.stats.totalTx) ui.stats.totalTx.textContent = String(state.totalTxCount);
 }
 
-/***** Abrir detalle de estación *****/
+/***** Open station detail *****/
 function openDeviceDetail(id) {
   const st = state.stations.find(s => s.id === id);
   if (!st) return;
   state.selectedStation = st;
 
-  // Rellenar sumario
+  // Fill summary
   ui.detail.title.textContent = st.name;
   ui.detail.id.textContent = st.id;
   ui.detail.status.textContent = st.status;
@@ -455,21 +455,21 @@ function openDeviceDetail(id) {
   ui.detail.uptime.textContent = `${Math.floor(Math.random()*96)+24} h`;
   ui.detail.contract.textContent = CONTRACT_ADDRESS || '-';
 
-  // Reset agente
+  // Reset agent
   resetAgent(st);
   agentBindEvents(st);
 
-  // Render pagos existentes y arrancar stream live
+  // Render existing payments and start live stream
   renderPayments(st);
   startPaymentsStream(st);
 
-  // Mostrar página
+  // Show page
   showPage(ui.pages.detail);
 
-  // opcional: simula llegada automática a los 2–5s
+  // optional: simulate automatic arrival in 2-5s
   setTimeout(() => {
     if (!state.agent.running && state.agent.enabled) {
-      agentEvent('Vehículo detectado por IoT (auto)');
+      agentEvent('Vehicle detected by IoT (auto)');
       agentStartSession(st);
     }
   }, 2000 + Math.random()*3000);
@@ -512,14 +512,14 @@ function pushPayment(station, payment) {
   state.totalTxCount++;
   renderStats();
 
-  // pintar arriba del todo
+  // paint at the top
   const list = ui.lists.payments;
   if (list) {
     list.prepend(paymentItem(payment));
   }
 }
 
-/***** Stream de pagos "entrantes" simulados *****/
+/***** Stream of simulated "incoming" payments *****/
 function startPaymentsStream(station) {
   stopPaymentsStream(station.id);
 
@@ -547,14 +547,14 @@ function stopPaymentsStream(stationId) {
   state.paymentsTimers.delete(stationId);
 }
 
-/***** Utilidades *****/
+/***** Utilities *****/
 function randomAk() {
   // address mock tipo ak_...
   const base = btoa(String(Math.random())).replace(/[^a-zA-Z0-9]/g,'').slice(0, 30);
   return `ak_${base}${Math.floor(Math.random()*1000)}`;
 }
 
-/***** Agente automático *****/
+/***** Automatic agent *****/
 function agentComputeTotal() {
   const k = Number(ui.agent.kwh?.value || 0);
   const t = Number(ui.agent.tariff?.value || 0);
@@ -603,10 +603,10 @@ async function agentStartSession(st) {
   if (!state.agent.enabled || state.agent.running) return;
 
   if (!connected) {
-    agentEvent('Wallet no conectada: intentando conectar…');
+    agentEvent('Wallet not connected: trying to connect...');
     await connectWallet();
     if (!connected) {
-      agentEvent('❌ No se pudo conectar la wallet. Sesión sólo visual.');
+      agentEvent('❌ Could not connect wallet. Visual session only.');
     }
   }
 
@@ -631,8 +631,8 @@ async function agentStartSession(st) {
   ui.agent?.ptxt && (ui.agent.ptxt.textContent = '0%');
   setAgentStatus('charging');
 
-  // === Paso 2–3: App -> SC (arrancar sesión) ===
-  agentEvent(`App: Iniciar carga en ${st.id}`);
+  // === Step 2-3: App -> SC (start session) ===
+  agentEvent(`App: Start charging at ${st.id}`);
   try {
     await scEnsureCharger(st);
     const provId = await scEnsureProvider(state.agent.session.providerAddr, state.agent.session.priceAEkWh);
@@ -647,26 +647,26 @@ async function agentStartSession(st) {
     agentEvent(`SC: ConsumptionStarted(session=${state.agent.session.id})`);
   } catch (err) {
     console.error(err);
-    agentEvent('❌ SC: start_consumption falló. Seguimos en modo visual.');
+    agentEvent('❌ SC: start_consumption failed. Continuing in visual mode.');
   }
 
-  // === Lecturas IoT cada 5s (Paso 4–6) ===
+  // === IoT readings every 5s (Step 4-6) ===
   if (state.agent.mqtt) clearInterval(state.agent.mqtt);
   state.agent.mqtt = setInterval(async () => {
     const deltaKwh = +(Math.random()*0.6 + 0.2).toFixed(3);
     state.agent.consumed = +(state.agent.consumed + deltaKwh).toFixed(3);
     agentEvent(`IoT→MQTT: +${deltaKwh} kWh (total ${state.agent.consumed})`);
 
-    // Precio a usar
+    // Price to use
     const price = state.agent.session.priceAEkWh;
     const pct = Math.min(100, (state.agent.consumed / state.agent.session.kwhGoal) * 100);
     ui.agent?.pbar && (ui.agent.pbar.style.width = `${pct}%`);
     ui.agent?.ptxt && (ui.agent.ptxt.textContent = `${Math.floor(pct)}%`);
 
-    // Paso 5: oráculo "verifica"
-    agentEvent(`Oracle ${shortAddr(state.agent.session.oracleId)}: lectura verificada`);
+    // Step 5: oracle "verifies"
+    agentEvent(`Oracle ${shortAddr(state.agent.session.oracleId)}: reading verified`);
 
-    // Paso 6: SC debita (por actualización)
+    // Step 6: SC debits (by update)
     const sessId = state.agent.session.id;
     if (sessId != null) {
       try {
@@ -674,29 +674,29 @@ async function agentStartSession(st) {
         await (await getContract()).methods.update_consumption_reading(sessId, kwhInt);
         agentEvent(`SC: update_consumption_reading(+${kwhInt} mWh)`);
       } catch (e) {
-        console.warn('update_consumption_reading falló (mock continúa):', e?.message || e);
+        console.warn('update_consumption_reading failed (mock continues):', e?.message || e);
       }
     }
 
-    // Terminar sesión cuando alcanzamos objetivo
+    // End session when we reach goal
     if (state.agent.consumed >= state.agent.session.kwhGoal) {
       clearInterval(state.agent.mqtt); state.agent.mqtt = null;
       setAgentStatus('settling');
-      agentEvent('Vehículo: Detener carga');
+      agentEvent('Vehicle: Stop charging');
 
-      // Paso 7–9: Pago final y cierre
+      // Step 7-9: Final payment and close
       try {
         const totalIntKwh = kwhToInt(state.agent.consumed);
         if (state.agent.session.id != null) {
           await (await getContract()).methods.stop_consumption(state.agent.session.id, totalIntKwh);
-          agentEvent('SC: stop_consumption → sesión cerrada ✅');
+          agentEvent('SC: stop_consumption → session closed ✅');
         }
       } catch (e) {
-        console.warn('stop_consumption falló (mock continúa):', e?.message || e);
+        console.warn('stop_consumption failed (mock continues):', e?.message || e);
       }
 
-      // (UI) reflejamos pago a provider en el feed — el contrato lo hace on-chain;
-      // aquí sólo mostramos un "echo visual".
+      // (UI) we reflect payment to provider in the feed — the contract does it on-chain;
+      // here we only show a "visual echo".
       const totalAE = +(state.agent.consumed * price).toFixed(6);
       pushPayment(st, {
         id: crypto.randomUUID(),
@@ -724,7 +724,7 @@ async function agentStartSession(st) {
 }
 
 function agentAutoSettle(st, session) {
-  // registrar pago de salida (Station → Utility)
+  // register outgoing payment (Station → Utility)
   pushPayment(st, {
     id: crypto.randomUUID(),
     ts: Date.now(),
@@ -735,23 +735,23 @@ function agentAutoSettle(st, session) {
     note: 'Auto-settlement (Station → Utility)',
   });
 
-  agentEvent('Agent: pago automático ejecutado ✅');
+  agentEvent('Agent: automatic payment executed ✅');
   setAgentStatus('settled');
   agentHistoryPush(st.id, session);
 
-  // reset sesión
+  // reset session
   state.agent.running = false;
   state.agent.session = null;
 }
 
 function resetAgent(st) {
-  // valores por defecto
+  // default values
   if (ui.agent?.kwh) ui.agent.kwh.value = 12;
   if (ui.agent?.tariff) ui.agent.tariff.value = st.priceAEkWh || 0.12;
   if (ui.agent?.utility) ui.agent.utility.value = '';
   agentComputeTotal();
 
-  // progreso/estado
+  // progress/status
   state.agent.enabled = !!ui.agent?.toggle?.checked;
   state.agent.running = false;
   state.agent.pct = 0;
@@ -759,11 +759,11 @@ function resetAgent(st) {
   if (ui.agent?.ptxt) ui.agent.ptxt.textContent = '0%';
   setAgentStatus('idle');
 
-  // limpiar eventos
+  // clear events
   if (ui.agent?.events) ui.agent.events.innerHTML = '';
   if (ui.agent?.history) ui.agent.history.innerHTML = '';
 
-  // pintar historial previo (si hay)
+  // paint previous history (if any)
   const prev = state.agent.history.get(st.id) || [];
   prev.forEach(sess => agentHistoryPush(st.id, sess));
 }
@@ -778,22 +778,22 @@ function agentBindEvents(st) {
     setAgentStatus(state.agent.enabled ? (state.agent.running ? 'charging' : 'idle') : 'disabled');
   });
   ui.agent.arrival?.addEventListener('click', () => {
-    agentEvent('Vehículo detectado por IoT (simulado)');
+    agentEvent('Vehicle detected by IoT (simulated)');
     if (state.agent.enabled) agentStartSession(st);
-    else agentEvent('Agente deshabilitado: no se inicia sesión');
+    else agentEvent('Agent disabled: session not started');
   });
   ui.agent.reset?.addEventListener('click', () => resetAgent(st));
   document.getElementById('agent-fund')?.addEventListener('click', async () => {
     try {
       await scFundCharger(st, 5);
-      agentEvent('✅ Cargador fundido con 5 AE');
+      agentEvent('✅ Charger funded with 5 AE');
     } catch (e) {
-      agentEvent(`❌ Error fundiendo: ${e.message}`);
+      agentEvent(`❌ Error funding: ${e.message}`);
     }
   });
 }
 
-/***** Eventos UI *****/
+/***** UI Events *****/
 // Navbar
 ui.nav.devices?.addEventListener('click', () => {
   renderDevicesList();
@@ -808,7 +808,7 @@ document.getElementById('hero-devices-btn')?.addEventListener('click', () => {
   showPage(ui.pages.devices);
 });
 
-// Botón back del detalle
+// Detail back button
 document.getElementById('device-detail-back-btn')?.addEventListener('click', () => {
   if (state.selectedStation) stopPaymentsStream(state.selectedStation.id);
   showPage(ui.pages.devices);
@@ -824,16 +824,16 @@ ui.paymentsCtl.resume?.addEventListener('click', () => {
   ui.paymentsCtl.status.textContent = 'live';
 });
 
-// Los eventos del agente se manejan en agentBindEvents()
+// Agent events are handled in agentBindEvents()
 
-// Inicial
+// Initial
 document.addEventListener('DOMContentLoaded', () => {
   renderStats();
-  renderDevicesList(); // para que "Devices" ya esté listo al primer click
-  // puedes también sembrar "Recent Devices" si quieres
+  renderDevicesList(); // so "Devices" is already ready on first click
+  // you can also seed "Recent Devices" if you want
 });
 
-// Hacer funciones disponibles globalmente para la consola
+// Make functions globally available for console
 window.setContractAddress = setContractAddress;
 window.scFundCharger = scFundCharger;
 window.getContract = getContract;

@@ -1,0 +1,40 @@
+# Installation
+> `npm install --save @types/sha.js`
+
+# Summary
+This package contains type definitions for sha.js (https://github.com/crypto-browserify/sha.js).
+
+# Details
+Files were exported from https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/sha.js.
+## [index.d.ts](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/sha.js/index.d.ts)
+````ts
+/// <reference types="node" />
+
+import { Hash } from "crypto";
+
+export = SHA;
+
+declare function SHA(algorithm: SHA.Algorithm | Uppercase<SHA.Algorithm>): Hash;
+
+declare namespace SHA {
+    type Algorithm = "sha" | "sha1" | "sha224" | "sha256" | "sha384" | "sha512";
+    interface HashStatic {
+        new(): Hash;
+    }
+
+    const sha: HashStatic;
+    const sha1: HashStatic;
+    const sha224: HashStatic;
+    const sha256: HashStatic;
+    const sha384: HashStatic;
+    const sha512: HashStatic;
+}
+
+````
+
+### Additional Details
+ * Last updated: Tue, 07 Nov 2023 15:11:36 GMT
+ * Dependencies: [@types/node](https://npmjs.com/package/@types/node)
+
+# Credits
+These definitions were written by [BendingBender](https://github.com/BendingBender).
