@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EV Charger - Complete Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/@aeternity/aepp-sdk/dist/aepp-sdk.browser-script.cjs"></script>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen p-4">
+<div class="max-w-7xl mx-auto">
+    <!-- Header with Connection -->
+    <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 mb-6 border border-white/20">
+        <div class="flex justify-between items-center flex-wrap gap-4">
+            <div>
+                <h1 class="text-4xl font-bold text-white mb-2">⚡ EV Charging Platform</h1>
+                <p class="text-purple-200">Complete Blockchain Integration Dashboard</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-right">
+                    <div class="flex items-center gap-2 mb-1">
+                        <div id="connectionDot" class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <span id="connectionStatus" class="text-white font-medium">Disconnected</span>
+                    </div>
+                    <p id="walletAddress" class="text-xs text-purple-200 font-mono">No wallet connected</p>
+                    <p class="text-xs text-purple-300 mt-1">Contract: ct_gWC...VPjb7</p>
+                </div>
+                <button id="connectBtn" class="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold hover:from-purple-600 hover:to-pink-600 transition-all transform hover:scale-105">
+                    Connect Wallet
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl mb-6 border border-white/20 p-2">
+        <div class="flex gap-2 overflow-x-auto">
+            <button class="tab-btn active" data-tab="chargers">🔌 Chargers</button>
+            <button class="tab-btn" data-tab="providers">⚡ Providers</button>
+            <button class="tab-btn" data-tab="sessions">📊 Sessions</button>
+            <button class="tab-btn" data-tab="payments">💳 Payments</button>
+            <button class="tab-btn" data-tab="alerts">🚨 Alerts</button>
+            <button class="tab-btn" data-tab="admin">⚙️ Admin</button>
+        </div>
+    </div>
+
+    <!-- Chargers Tab -->
+    <div id="tab-chargers" class="tab-content">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Register Charger -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">📝 Register New Charger</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Charger ID</label>
+                        <input id="newChargerId" type="text" placeholder="CHARGER_001" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Location</label>
+                        <input id="newChargerLocation" type="text" placeholder="Downtown Station" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Initial Balance (aettos)</label>
+                        <input id="newChargerBalance" type="number" placeholder="10000" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="registerChargerBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl">
+                        Register Charger
+                    </button>
+                </div>
+            </div>
+
+            <!-- Fund Charger -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">💰 Fund Charger</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Charger ID</label>
+                        <input id="fundChargerId" type="text" placeholder="CHARGER_001" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Amount (aettos)</label>
+                        <input id="fundAmount" type="number" placeholder="5000" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="fundChargerBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl">
+                        Fund Charger
+                    </button>
+                </div>
+            </div>
+
+            <!-- View Charger Info -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">🔍 View Charger Info</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Charger ID</label>
+                        <input id="viewChargerId" type="text" placeholder="CHARGER_001" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="viewChargerBtn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl">
+                        Get Info
+                    </button>
+                    <div id="chargerInfoDisplay" class="hidden bg-white/5 rounded-lg p-4 space-y-2 text-sm">
+                        <p class="text-purple-200">Operator: <span id="chargerOperator" class="text-white font-mono"></span></p>
+                        <p class="text-purple-200">Location: <span id="chargerLocation" class="text-white"></span></p>
+                        <p class="text-purple-200">Balance: <span id="chargerBalance" class="text-green-400 font-bold"></span> aettos</p>
+                        <p class="text-purple-200">Total kWh: <span id="chargerTotalKwh" class="text-white"></span></p>
+                        <p class="text-purple-200">Total Paid: <span id="chargerTotalPaid" class="text-white"></span> aettos</p>
+                        <p class="text-purple-200">Status: <span id="chargerStatus" class="text-white"></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Chargers -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">🏢 My Chargers</h2>
+                <button id="loadMyChargersBtn" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl mb-4">
+                    Load My Chargers
+                </button>
+                <div id="myChargersList" class="space-y-2 max-h-60 overflow-y-auto">
+                    <p class="text-purple-200 text-center py-4">Click to load</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Providers Tab -->
+    <div id="tab-providers" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Register Provider -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">⚡ Register Provider</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Provider ID</label>
+                        <input id="newProviderId" type="text" placeholder="PROVIDER_001" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Provider Name</label>
+                        <input id="newProviderName" type="text" placeholder="GreenEnergy Co." class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Price per kWh (aettos)</label>
+                        <input id="newProviderPrice" type="number" placeholder="100" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="registerProviderBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl">
+                        Register Provider
+                    </button>
+                </div>
+            </div>
+
+            <!-- Set Dynamic Pricing -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">📈 Dynamic Pricing</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Provider ID</label>
+                        <input id="dynProviderId" type="text" placeholder="PROVIDER_001" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Base Price (aettos/kWh)</label>
+                        <input id="dynBasePrice" type="number" placeholder="100" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-purple-200 text-sm">Peak Multiplier (%)</label>
+                            <input id="dynPeakMult" type="number" placeholder="150" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="text-purple-200 text-sm">Off-Peak (%)</label>
+                            <input id="dynOffPeakMult" type="number" placeholder="80" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Peak Hours (comma separated, 0-23)</label>
+                        <input id="dynPeakHours" type="text" placeholder="8,9,10,17,18,19" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="setDynamicPricingBtn" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl">
+                        Set Dynamic Pricing
+                    </button>
+                </div>
+            </div>
+
+            <!-- View Provider -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">🔍 View Provider</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Provider ID</label>
+                        <input id="viewProviderId" type="text" placeholder="PROVIDER_001" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="viewProviderBtn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl">
+                        Get Info
+                    </button>
+                    <div id="providerInfoDisplay" class="hidden bg-white/5 rounded-lg p-4 space-y-2 text-sm">
+                        <p class="text-purple-200">Name: <span id="providerName" class="text-white"></span></p>
+                        <p class="text-purple-200">Address: <span id="providerAddress" class="text-white font-mono text-xs"></span></p>
+                        <p class="text-purple-200">Price/kWh: <span id="providerPrice" class="text-green-400 font-bold"></span> aettos</p>
+                        <p class="text-purple-200">Total Supplied: <span id="providerTotalKwh" class="text-white"></span> kWh</p>
+                        <p class="text-purple-200">Total Revenue: <span id="providerRevenue" class="text-white"></span> aettos</p>
+                        <p class="text-purple-200">Status: <span id="providerStatus" class="text-white"></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculate Cost -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">🧮 Calculate Cost</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Provider ID</label>
+                        <input id="calcProviderId" type="text" placeholder="PROVIDER_001" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Estimated kWh</label>
+                        <input id="calcKwh" type="number" placeholder="50" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="calcCostBtn" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl">
+                        Calculate
+                    </button>
+                    <div id="costResult" class="hidden bg-green-500/20 border border-green-500 rounded-lg p-4 text-center">
+                        <p class="text-purple-200 text-sm">Estimated Cost</p>
+                        <p id="costAmount" class="text-3xl font-bold text-green-400"></p>
+                        <p class="text-purple-200 text-xs">aettos</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sessions Tab -->
+    <div id="tab-sessions" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Start Session -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">▶️ Start Consumption</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Charger ID</label>
+                        <input id="sessionChargerId" type="text" placeholder="CHARGER_001" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Provider ID</label>
+                        <input id="sessionProviderId" type="text" placeholder="PROVIDER_001" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Oracle ID</label>
+                        <input id="sessionOracleId" type="text" placeholder="ok_..." class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Estimated kWh</label>
+                        <input id="sessionEstKwh" type="number" placeholder="50" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Metadata (optional)</label>
+                        <input id="sessionMetadata" type="text" placeholder="Fast charging session" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="startSessionBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl">
+                        Start Session
+                    </button>
+                    <div id="sessionStartResult" class="hidden bg-green-500/20 border border-green-500 rounded-lg p-3 text-center">
+                        <p class="text-purple-200 text-sm">Session Started!</p>
+                        <p class="text-white text-sm">ID: <span id="newSessionId" class="font-bold"></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Update Session -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">🔄 Update Reading</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Session ID</label>
+                        <input id="updateSessionId" type="number" placeholder="1" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Current kWh Reading</label>
+                        <input id="updateKwhReading" type="number" placeholder="25" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="updateReadingBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl">
+                        Update Reading
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stop Session -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">⏹️ Stop Session</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Session ID</label>
+                        <input id="stopSessionId" type="number" placeholder="1" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-purple-200 text-sm">Final kWh Reading</label>
+                        <input id="stopKwhReading" type="number" placeholder="50" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="stopSessionBtn" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl">
+                        Stop & Finalize
+                    </button>
+                </div>
+            </div>
+
+            <!-- View Session -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">🔍 View Session</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Session ID</label>
+                        <input id="viewSessionId" type="number" placeholder="1" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="viewSessionBtn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl">
+                        Get Session Info
+                    </button>
+                    <div id="sessionInfoDisplay" class="hidden bg-white/5 rounded-lg p-4 space-y-2 text-sm max-h-80 overflow-y-auto">
+                        <p class="text-purple-200">Charger: <span id="sessionCharger" class="text-white"></span></p>
+                        <p class="text-purple-200">Provider: <span id="sessionProvider" class="text-white"></span></p>
+                        <p class="text-purple-200">kWh Consumed: <span id="sessionKwh" class="text-white font-bold"></span></p>
+                        <p class="text-purple-200">Total Cost: <span id="sessionCost" class="text-green-400 font-bold"></span> aettos</p>
+                        <p class="text-purple-200">Status: <span id="sessionStatus" class="text-white"></span></p>
+                        <p class="text-purple-200">Start: <span id="sessionStart" class="text-white text-xs"></span></p>
+                        <p class="text-purple-200">End: <span id="sessionEnd" class="text-white text-xs"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments Tab -->
+    <div id="tab-payments" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- View Payment -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">💳 View Payment</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Payment ID</label>
+                        <input id="viewPaymentId" type="number" placeholder="1" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="viewPaymentBtn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl">
+                        Get Payment Info
+                    </button>
+                    <div id="paymentInfoDisplay" class="hidden bg-white/5 rounded-lg p-4 space-y-2 text-sm">
+                        <p class="text-purple-200">Session ID: <span id="paymentSession" class="text-white"></span></p>
+                        <p class="text-purple-200">Charger: <span id="paymentCharger" class="text-white"></span></p>
+                        <p class="text-purple-200">Provider: <span id="paymentProvider" class="text-white font-mono text-xs"></span></p>
+                        <p class="text-purple-200">Amount: <span id="paymentAmount" class="text-green-400 font-bold"></span> aettos</p>
+                        <p class="text-purple-200">kWh: <span id="paymentKwh" class="text-white"></span></p>
+                        <p class="text-purple-200">Type: <span id="paymentType" class="text-white"></span></p>
+                        <p class="text-purple-200">Time: <span id="paymentTime" class="text-white text-xs"></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Stats -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">📊 Payment Statistics</h2>
+                <div class="space-y-4">
+                    <div class="bg-white/5 rounded-lg p-4 text-center">
+                        <p class="text-purple-200 text-sm">Total Payments</p>
+                        <p id="totalPayments" class="text-3xl font-bold text-white">-</p>
+                    </div>
+                    <p class="text-purple-200 text-sm text-center">View individual payments using Payment ID above</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts Tab -->
+    <div id="tab-alerts" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- View Alerts -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">🚨 Charger Alerts</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Charger ID</label>
+                        <input id="alertsChargerId" type="text" placeholder="CHARGER_001" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="viewAlertsBtn" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl">
+                        Get Alerts
+                    </button>
+                    <div id="alertsList" class="space-y-2 max-h-96 overflow-y-auto">
+                        <p class="text-purple-200 text-center py-4">No alerts loaded</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resolve Alert -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">✅ Resolve Alert</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Alert ID</label>
+                        <input id="resolveAlertId" type="number" placeholder="1" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="resolveAlertBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl">
+                        Resolve Alert
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Tab -->
+    <div id="tab-admin" class="tab-content hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Contract Control -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">⚙️ Contract Control</h2>
+                <div class="space-y-4">
+                    <button id="pauseContractBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 rounded-xl">
+                        Pause Contract
+                    </button>
+                    <button id="unpauseContractBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl">
+                        Unpause Contract
+                    </button>
+                </div>
+            </div>
+
+            <!-- Set Threshold -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">⚠️ Balance Threshold</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-purple-200 text-sm">Minimum Balance (aettos)</label>
+                        <input id="minThreshold" type="number" placeholder="100" class="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <button id="setThresholdBtn" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl">
+                        Set Threshold
+                    </button>
+                </div>
+            </div>
+
+            <!-- Owner Info -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4">👤 Owner Info</h2>
+                <button id="getOwnerBtn" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 rounded-xl mb-4">
+                    Get Owner Address
+                </button>
+                <div id="ownerDisplay" class="hidden bg-white/5 rounded-lg p-4">
+                    <p class="text-purple-200 text-sm">Contract Owner</p>
+                    <p id="ownerAddress" class="text-white font-mono text-xs break-all"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Console Log -->
+    <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 border border-white/20 mt-6">
+        <h2 class="text-2xl font-bold text-white mb-4">📋 Activity Log</h2>
+        <div id="activityLog" class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-green-400 space-y-1 max-h-60 overflow-y-auto">
+            <p>[System] Initializing...</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.tab-btn {
+    padding: 12px 24px;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+    border-radius: 12px;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+.tab-btn.active {
+    background: linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153));
+    color: white;
+}
+input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+</style>
+
+<script>
+const { AeSdkAepp, Node, BrowserWindowMessageConnection, walletDetector, Contract } = window.Aeternity;
+
+const CONTRACT_ADDRESS = 'ct_gWCgyfWtVYAYXD2zwPQHxLK6btmvjhPhZE9XVmSzpaVNVPjb7';
+
+let aeSdk, contract;
+let connected = false;
+let currentAddress;
+
+function log(msg, type = 'info') {
+    const el = document.getElementById('activityLog');
+    const line = document.createElement('p');
+    const colors = {info: 'text-green-400', error: 'text-red-400', success: 'text-blue-400'};
+    line.className = colors[type] || colors.info;
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    el.insertBefore(line, el.firstChild);
+    while (el.children.length > 50) el.removeChild(el.lastChild);
+}
+
+async function initAepp() {
+    log('Initializing SDK...');
+    aeSdk = new AeSdkAepp({
+        name: 'Charger Operator',
+        nodes: [{ name: 'testnet', instance: new Node('https://testnet.aeternity.io') }],
+        compilerUrl: 'https://compiler.aepps.com',
+        onAddressChange: ({ current }) => {
+            const addr = Object.keys(current)[0];
+            currentAddress = addr;
+            document.getElementById('walletAddress').textContent = addr;
+        },
+        onDisconnect: () => {
+            connected=false;
+            currentAddress=undefined;
+            log('Wallet disconnected');
+            alert('Wallet disconnected');
+        }
+    });
+    log('SDK initialized successfully');
+}
+
+async function initContract() {
+    try {
+        const contractAci = await fetch('./aci.json').then(r => r.json());
+
+        const aci = [
+        {
+            contract: {
+            name: 'EVCharger',
+            functions: contractAci.abi.map(f => ({
+                name: f.name,
+                arguments: f.arguments ?? [],
+                stateful: f.stateful ?? false,
+                payable: f.payable ?? false,
+                returns: f.returns?.type ?? 'unit',
+            })),
+            events: [], // si no tienes eventos
+            types: contractAci.types
+            }
+        }
+        ];
+
+
+        // aeSdk.getAccount() y aeSdk.getNode() no existen, pero wallet connection sí tiene
+        const account = currentAddress;
+        const node = new window.Aeternity.Node('https://testnet.aeternity.io'); // usar tu nodo directo
+        const compiler = new window.Aeternity.CompilerHttp('https://v7.compiler.aepps.com');
+
+        console.log('Node:', node);
+        console.log('Account:', account);
+        console.log('Compiler:', compiler);
+        console.log('ACI:', aci);
+        console.log('Contract address:', CONTRACT_ADDRESS);
+
+        contract = await window.Aeternity.Contract.initialize({
+            onNode: node,
+            onAccount: { address: account },
+            onCompiler: compiler,
+            aci: aci,
+            address: CONTRACT_ADDRESS
+        });
+
+        console.log('Contract initialized:', contract);
+        log('Contract initialized successfully');
+    } catch (err) {
+        console.error('Contract init error:', err);
+        log(`Contract init error: ${err.message}`);
+        alert(`Contract init failed: ${err.message}`);
+    }
+}
+
+
+async function connectWallet() {
+    const scanner = new BrowserWindowMessageConnection();
+    let stopped = false;
+    const handleWallets = async ({ wallets, newWallet }) => {
+        if (stopped) return;
+        const wallet = newWallet || Object.values(wallets)[0];
+        stopped = true;
+        stopScan?.();
+        try {
+            await aeSdk.connectToWallet(wallet.getConnection());
+            await new Promise(r => setTimeout(r, 150));
+            
+            const { address: { current } } = await aeSdk.subscribeAddress('subscribe', 'connected');
+            currentAddress = Object.keys(current)[0];
+            connected = true;
+            
+            document.getElementById('connectionDot').className = 'w-3 h-3 rounded-full bg-green-500';
+            document.getElementById('connectionStatus').textContent = 'Connected';
+            document.getElementById('walletAddress').textContent = currentAddress.slice(0, 12) + '...' + currentAddress.slice(-8);
+            document.getElementById('connectBtn').disabled = true;
+            
+            log(`Connected: ${currentAddress}`, 'success');
+            await initContract();
+        } catch (err) {
+            log(`Connection failed: ${err.message}`, 'error');
+        }
+    };
+    const stopScan = walletDetector(scanner, handleWallets);
+}
+
+// Contract interactions
+async function registerCharger() {
+    try {
+        const id = document.getElementById('newChargerId').value;
+        const location = document.getElementById('newChargerLocation').value;
+        const balance = parseInt(document.getElementById('newChargerBalance').value);
+        
+        log(`Registering charger ${id}...`);
+        const result = await contract.register_charger(id, location, balance);
+        log(`Charger registered! TX: ${result.hash}`, 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function fundCharger() {
+    try {
+        const id = document.getElementById('fundChargerId').value;
+        const amount = parseInt(document.getElementById('fundAmount').value);
+        
+        log(`Funding charger ${id} with ${amount} aettos...`);
+        const result = await contract.fund_charger(id, { amount });
+        log(`Charger funded! TX: ${result.hash}`, 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function viewCharger() {
+    try {
+        const id = document.getElementById('viewChargerId').value;
+        log(`Getting charger info for ${id}...`);
+        
+        const result = await contract.get_charger_info(id);
+        
+        if (result.decodedResult && result.decodedResult[0]) {
+            const info = result.decodedResult[0];
+            document.getElementById('chargerOperator').textContent = info.operator;
+            document.getElementById('chargerLocation').textContent = info.location;
+            document.getElementById('chargerBalance').textContent = info.balance;
+            document.getElementById('chargerTotalKwh').textContent = info.total_kwh_consumed;
+            document.getElementById('chargerTotalPaid').textContent = info.total_paid;
+            document.getElementById('chargerStatus').textContent = info.is_active ? 'Active' : 'Inactive';
+            document.getElementById('chargerInfoDisplay').classList.remove('hidden');
+            log('Charger info loaded', 'success');
+        } else {
+            log('Charger not found', 'error');
+        }
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function registerProvider() {
+    try {
+        const id = document.getElementById('newProviderId').value;
+        const name = document.getElementById('newProviderName').value;
+        const price = parseInt(document.getElementById('newProviderPrice').value);
+        
+        log(`Registering provider ${id}...`);
+        const result = await contract.register_provider(id, name, price);
+        log(`Provider registered! TX: ${result.hash}`, 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function setDynamicPricing() {
+    try {
+        const id = document.getElementById('dynProviderId').value;
+        const base = parseInt(document.getElementById('dynBasePrice').value);
+        const peak = parseInt(document.getElementById('dynPeakMult').value);
+        const offPeak = parseInt(document.getElementById('dynOffPeakMult').value);
+        const hours = document.getElementById('dynPeakHours').value.split(',').map(h => parseInt(h.trim()));
+        
+        log(`Setting dynamic pricing for ${id}...`);
+        const result = await contract.set_dynamic_pricing(id, base, peak, offPeak, hours);
+        log(`Dynamic pricing set! TX: ${result.hash}`, 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function viewProvider() {
+    try {
+        const id = document.getElementById('viewProviderId').value;
+        log(`Getting provider info for ${id}...`);
+        
+        const result = await contract.get_provider_info(id);
+        
+        if (result.decodedResult && result.decodedResult[0]) {
+            const info = result.decodedResult[0];
+            document.getElementById('providerName').textContent = info.name;
+            document.getElementById('providerAddress').textContent = info.provider_address;
+            document.getElementById('providerPrice').textContent = info.price_per_kwh;
+            document.getElementById('providerTotalKwh').textContent = info.total_kwh_supplied;
+            document.getElementById('providerRevenue').textContent = info.total_revenue;
+            document.getElementById('providerStatus').textContent = info.is_active ? 'Active' : 'Inactive';
+            document.getElementById('providerInfoDisplay').classList.remove('hidden');
+            log('Provider info loaded', 'success');
+        } else {
+            log('Provider not found', 'error');
+        }
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function calculateCost() {
+    try {
+        const id = document.getElementById('calcProviderId').value;
+        const kwh = parseInt(document.getElementById('calcKwh').value);
+        
+        log(`Calculating cost for ${kwh} kWh...`);
+        const result = await contract.calculate_estimated_cost(id, kwh);
+        
+        document.getElementById('costAmount').textContent = result.decodedResult;
+        document.getElementById('costResult').classList.remove('hidden');
+        log('Cost calculated', 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function startSession() {
+    try {
+        const chargerId = document.getElementById('sessionChargerId').value;
+        const providerId = document.getElementById('sessionProviderId').value;
+        const oracleId = document.getElementById('sessionOracleId').value;
+        const estKwh = parseInt(document.getElementById('sessionEstKwh').value);
+        const metadata = document.getElementById('sessionMetadata').value;
+        
+        log(`Starting session for ${chargerId}...`);
+        const result = await contract.start_consumption(chargerId, providerId, oracleId, estKwh, metadata);
+        
+        document.getElementById('newSessionId').textContent = result.decodedResult;
+        document.getElementById('sessionStartResult').classList.remove('hidden');
+        log(`Session started! ID: ${result.decodedResult}`, 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function updateReading() {
+    try {
+        const sessionId = parseInt(document.getElementById('updateSessionId').value);
+        const kwh = parseInt(document.getElementById('updateKwhReading').value);
+        
+        log(`Updating session ${sessionId}...`);
+        const result = await contract.update_consumption_reading(sessionId, kwh);
+        log(`Reading updated! TX: ${result.hash}`, 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function stopSession() {
+    try {
+        const sessionId = parseInt(document.getElementById('stopSessionId').value);
+        const kwh = parseInt(document.getElementById('stopKwhReading').value);
+        
+        log(`Stopping session ${sessionId}...`);
+        const result = await contract.stop_consumption(sessionId, kwh);
+        log(`Session stopped! TX: ${result.hash}`, 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function viewSession() {
+    try {
+        const sessionId = parseInt(document.getElementById('viewSessionId').value);
+        log(`Getting session info for ${sessionId}...`);
+        
+        const result = await contract.get_session(sessionId);
+        
+        if (result.decodedResult && result.decodedResult[0]) {
+            const info = result.decodedResult[0];
+            document.getElementById('sessionCharger').textContent = info.charger_id;
+            document.getElementById('sessionProvider').textContent = info.provider_id;
+            document.getElementById('sessionKwh').textContent = info.kwh_consumed;
+            document.getElementById('sessionCost').textContent = info.total_cost;
+            document.getElementById('sessionStatus').textContent = info.status;
+            document.getElementById('sessionStart').textContent = new Date(info.start_time).toLocaleString();
+            document.getElementById('sessionEnd').textContent = info.end_time ? new Date(info.end_time[0]).toLocaleString() : 'Active';
+            document.getElementById('sessionInfoDisplay').classList.remove('hidden');
+            log('Session info loaded', 'success');
+        } else {
+            log('Session not found', 'error');
+        }
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function viewPayment() {
+    try {
+        const paymentId = parseInt(document.getElementById('viewPaymentId').value);
+        log(`Getting payment info for ${paymentId}...`);
+        
+        const result = await contract.get_payment(paymentId);
+        
+        if (result.decodedResult && result.decodedResult[0]) {
+            const info = result.decodedResult[0];
+            document.getElementById('paymentSession').textContent = info.session_id;
+            document.getElementById('paymentCharger').textContent = info.charger_id;
+            document.getElementById('paymentProvider').textContent = info.provider_address;
+            document.getElementById('paymentAmount').textContent = info.amount;
+            document.getElementById('paymentKwh').textContent = info.kwh_amount;
+            document.getElementById('paymentType').textContent = info.payment_type;
+            document.getElementById('paymentTime').textContent = new Date(info.timestamp).toLocaleString();
+            document.getElementById('paymentInfoDisplay').classList.remove('hidden');
+            log('Payment info loaded', 'success');
+        } else {
+            log('Payment not found', 'error');
+        }
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function pauseContract() {
+    try {
+        log('Pausing contract...');
+        const result = await contract.pause_contract();
+        log(`Contract paused! TX: ${result.hash}`, 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function unpauseContract() {
+    try {
+        log('Unpausing contract...');
+        const result = await contract.unpause_contract();
+        log(`Contract unpaused! TX: ${result.hash}`, 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function setThreshold() {
+    try {
+        const threshold = parseInt(document.getElementById('minThreshold').value);
+        log(`Setting minimum threshold to ${threshold}...`);
+        const result = await contract.set_min_balance_threshold(threshold);
+        log(`Threshold set! TX: ${result.hash}`, 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function getOwner() {
+    try {
+        log('Getting owner address...');
+        const result = await contract.get_owner();
+        document.getElementById('ownerAddress').textContent = result.decodedResult;
+        document.getElementById('ownerDisplay').classList.remove('hidden');
+        log('Owner address loaded', 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+async function resolveAlert() {
+    try {
+        const alertId = parseInt(document.getElementById('resolveAlertId').value);
+        log(`Resolving alert ${alertId}...`);
+        const result = await contract.resolve_alert(alertId);
+        log(`Alert resolved! TX: ${result.hash}`, 'success');
+    } catch (err) {
+        log(`Error: ${err.message}`, 'error');
+    }
+}
+
+// Tab navigation
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.remove('hidden');
+    });
+});
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!window.Aeternity) {
+        log('ERROR: SDK not loaded', 'error');
+        return;
+    }
+    
+    await initAepp();
+    
+    document.getElementById('connectBtn').addEventListener('click', connectWallet);
+    
+    // Chargers
+    document.getElementById('registerChargerBtn').addEventListener('click', registerCharger);
+    document.getElementById('fundChargerBtn').addEventListener('click', fundCharger);
+    document.getElementById('viewChargerBtn').addEventListener('click', viewCharger);
+    
+    // Providers
+    document.getElementById('registerProviderBtn').addEventListener('click', registerProvider);
+    document.getElementById('setDynamicPricingBtn').addEventListener('click', setDynamicPricing);
+    document.getElementById('viewProviderBtn').addEventListener('click', viewProvider);
+    document.getElementById('calcCostBtn').addEventListener('click', calculateCost);
+    
+    // Sessions
+    document.getElementById('startSessionBtn').addEventListener('click', startSession);
+    document.getElementById('updateReadingBtn').addEventListener('click', updateReading);
+    document.getElementById('stopSessionBtn').addEventListener('click', stopSession);
+    document.getElementById('viewSessionBtn').addEventListener('click', viewSession);
+    
+    // Payments
+    document.getElementById('viewPaymentBtn').addEventListener('click', viewPayment);
+    
+    // Alerts
+    document.getElementById('resolveAlertBtn').addEventListener('click', resolveAlert);
+    
+    // Admin
+    document.getElementById('pauseContractBtn').addEventListener('click', pauseContract);
+    document.getElementById('unpauseContractBtn').addEventListener('click', unpauseContract);
+    document.getElementById('setThresholdBtn').addEventListener('click', setThreshold);
+    document.getElementById('getOwnerBtn').addEventListener('click', getOwner);
+    
+    log('Dashboard ready. Connect your wallet to begin.', 'success');
+});
+</script>
+</body>
+</html>

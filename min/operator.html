@@ -266,14 +266,14 @@ async function initContract() {
 // --- Functions to interact with contract ---
 async function loadChargerData() {
     try {
-        const balance = await contract.methods.get_charger_balance(CHARGER_ID);
+        const balance = await contract.get_charger_balance(CHARGER_ID);
         document.getElementById('chargerBalance').textContent = balance.decodedResult;
     } catch(e) { log('Error loading charger data: '+e.message); }
 }
 
 async function loadProviders() {
     try {
-        const providers = await contract.methods.get_providers();
+        const providers = await contract.get_provider_info();
         const container = document.getElementById('providers');
         container.innerHTML = '';
         providers.decodedResult.forEach(p=>{
