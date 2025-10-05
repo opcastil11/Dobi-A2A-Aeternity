@@ -215,12 +215,30 @@ async function initAepp() {
 
 async function initContract() {
     try {
-        const aci = await fetch('./aci.json').then(r => r.json());
+        const contractAci = await fetch('./aci.json').then(r => r.json());
+
+        const aci = [
+        {
+            contract: {
+            name: 'EVCharger',
+            functions: contractAci.abi.map(f => ({
+                name: f.name,
+                arguments: f.arguments ?? [],
+                stateful: f.stateful ?? false,
+                payable: f.payable ?? false,
+                returns: f.returns?.type ?? 'unit',
+            })),
+            events: [], // si no tienes eventos
+            types: contractAci.types
+            }
+        }
+        ];
+
 
         // aeSdk.getAccount() y aeSdk.getNode() no existen, pero wallet connection sí tiene
         const account = currentAddress;
         const node = new window.Aeternity.Node('https://testnet.aeternity.io'); // usar tu nodo directo
-        const compiler = undefined; // no necesitas compiler si solo interactúas con ACI ya desplegado
+        const compiler = new window.Aeternity.CompilerHttp('https://v7.compiler.aepps.com');
 
         console.log('Node:', node);
         console.log('Account:', account);
@@ -229,10 +247,10 @@ async function initContract() {
         console.log('Contract address:', CONTRACT_ADDRESS);
 
         contract = await window.Aeternity.Contract.initialize({
-            node,
-            account,
-            compiler,
-            aci,
+            onNode: node,
+            onAccount: { address: account },
+            onCompiler: compiler,
+            aci: aci,
             address: CONTRACT_ADDRESS
         });
 
