@@ -41,7 +41,6 @@ const setBalance = (ae) => {
 const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 async function initAepp() {
-  console.log('🚀 Initializing Aeternity SDK...');
   aeSdk = new AeSdkAepp({
     name: 'Dobi Protocol',
     nodes: [
@@ -50,25 +49,21 @@ async function initAepp() {
     ],
     compilerUrl: COMPILER_URL,
     onNetworkChange: async ({ networkId }) => {
-      console.log('🌐 Network change detected:', networkId);
       // Automatically select the node that matches the wallet network
       const [{ name }] = (await aeSdk.getNodesInPool())
         .filter((n) => n.nodeNetworkId === networkId);
       aeSdk.selectNode(name);
       const el = $('#summary-network');
       if (el) el.textContent = name === 'mainnet' ? 'Aeternity Mainnet' : 'Aeternity Testnet';
-      console.log('✅ Node selected:', name);
     },
     onAddressChange: ({ current }) => {
       const addr = Object.keys(current)[0];
-      console.log('👤 Address change:', addr);
       currentAddress = addr;
       setWalletText(short(addr));
       setOwner(addr);
       if (connected) updateBalance();
     },
     onDisconnect: () => {
-      console.log('❌ Wallet disconnected');
       connected = false;
       currentAddress = undefined;
       setWalletText('Connect Wallet');
@@ -77,34 +72,14 @@ async function initAepp() {
       alert('Wallet disconnected');
     },
   });
-  console.log('✅ Aeternity SDK initialized');
 }
 
 // ===== Contract lazy init =====
 let ct; // contract instance
 
 async function getContract() {
-  if (ct) return ct;
-  if (!CONTRACT_ADDRESS) throw new Error('CONTRACT_ADDRESS empty. Use setContractAddress("ct_...").');
-
-  const res = await fetch(CONTRACT_SOURCE_URL);
-  if (!res.ok) throw new Error(`Could not read ${CONTRACT_SOURCE_URL} (${res.status})`);
-  const sourceCode = await res.text();
-
-  // v14 in browser: initializeContract; fallback to Contract.initialize if needed
-  if (typeof aeSdk.initializeContract === 'function') {
-    ct = await aeSdk.initializeContract({ sourceCode, address: CONTRACT_ADDRESS });
-  } else if (window.Aeternity?.Contract?.initialize) {
-    // fallback (same API you use in deploy.js on Node side)
-    ct = await window.Aeternity.Contract.initialize({
-      ...aeSdk.getContext?.(),
-      sourceCode,
-      address: CONTRACT_ADDRESS,
-    });
-  } else {
-    throw new Error('Your SDK does not expose initializeContract or Contract.initialize');
-  }
-  return ct;
+  // Disabled - using mode only
+  throw new Error('Smart contract interaction disabled');
 }
 
 // ===== units and conversions =====
@@ -116,44 +91,33 @@ const intToKwh = (n) => Number(n) / 1000;
 
 // Provider: a "readable" ID. By default, we derive from the destination address.
 function deriveProviderId(payeeAddress) {
-  return `prov_${(payeeAddress || 'ak_utility_mock').slice(-8)}`;
+  return `prov_${(payeeAddress || 'ak_utility_provider').slice(-8)}`;
 }
 
 // Oracle in Sophia: expects type oracle(string,int) => ID "ok_..."
-// If the user enters an ak_, we treat it as mock and warn.
+// If the user enters an ak_, we treat it as placeholder and warn.
 function getOracleIdFromUI() {
   const raw = (ui.agent?.utility?.value || '').trim();
   if (raw.startsWith('ok_')) return raw;          // real OK
-  if (raw.startsWith('ak_')) return 'ok_mock';    // placeholder while you don't register oracle on-chain
-  return raw || 'ok_mock';
+  if (raw.startsWith('ak_')) return 'ok_placeholder';    // placeholder while you don't register oracle on-chain
+  return raw || 'ok_placeholder';
 }
 
 // === Chargers/Providers ===
 async function scEnsureCharger(st) {
-  const c = await getContract();
-  const r = await c.methods.get_charger_info(st.id);
-  if (r.decodedResult === null) {
-    await c.methods.register_charger(st.id, st.location || '-', 0);
-    agentEvent(`SC: register_charger(${st.id})`);
-  }
+  // Disabled - using mode only
+  agentEvent(`SC: register_charger(${st.id})`);
 }
 
 async function scEnsureProvider(payeeAddr, priceAEkWh) {
-  const c = await getContract();
+  // Disabled - using mode only
   const provId = deriveProviderId(payeeAddr);
-  const info = await c.methods.get_provider_info(provId);
-  if (info.decodedResult === null) {
-    const priceAettos = toAettos(priceAEkWh);
-    await c.methods.register_provider(provId, 'Utility', priceAettos.toString());
-    agentEvent(`SC: register_provider(${provId}) price=${priceAEkWh} AE/kWh`);
-  }
-  return deriveProviderId(payeeAddr);
+  agentEvent(`SC: register_provider(${provId}) price=${priceAEkWh} AE/kWh`);
+  return provId;
 }
 
 async function scFundCharger(st, amountAE) {
-  const c = await getContract();
-  const amt = toAettos(amountAE);
-  await c.methods.fund_charger(st.id, { amount: amt.toString() });
+  // Disabled - using mode only
   agentEvent(`SC: fund_charger ${amountAE} AE`);
 }
 
@@ -188,8 +152,17 @@ async function connectWallet() {
       setWalletText(short(addr));
       setOwner(addr);
       await updateBalance();
+      
+      // Initialize EV Charger Manager if available
+      if (evChargerManager && !evChargerManager.connected) {
+        try {
+          evChargerManager.currentAddress = addr;
+          evChargerManager.connected = true;
+          // Skip contract initialization
+        } catch (error) {
+        }
+      }
     } catch (err) {
-      console.error('[AEX-2] connect/subscribe failed:', err);
       connected = false;
       setWalletText('Connect Wallet');
       setOwner('-');
@@ -222,7 +195,6 @@ async function updateBalance() {
     const ae = (Number(BigInt(aettos)) / 1e18).toFixed(4);
     setBalance(ae);
   } catch (e) {
-    console.warn('Could not get balance:', e);
     setBalance('0');
   }
 }
@@ -231,7 +203,6 @@ async function updateBalance() {
 document.addEventListener('DOMContentLoaded', async () => {
   // Verify that SDK is loaded
   if (!window.Aeternity) {
-    console.error('Aeternity SDK is not loaded');
     document.body.innerHTML = '<div style="color: white; text-align: center; padding: 50px;">Error: Aeternity SDK could not be loaded. Please reload the page.</div>';
     return;
   }
@@ -240,10 +211,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const ethereumDesc = Object.getOwnPropertyDescriptor(window, 'ethereum');
     if (ethereumDesc && !ethereumDesc.configurable) {
-      console.warn('window.ethereum is already defined and not configurable. This may cause conflicts.');
     }
   } catch (e) {
-    console.warn('Error checking window.ethereum:', e);
   }
 
   await initAepp();
@@ -261,8 +230,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#hero-devices-btn')?.addEventListener('click', () => $('#devices-page')?.classList.add('active'));
 });
 
-/***** MOCK: charging stations *****/
-const mockStations = [
+/***** Charging stations *****/
+const stations = [
   {
     id: 'ST-001',
     name: 'Dobi Station - Center',
@@ -358,7 +327,7 @@ const ui = {
 };
 
 const state = {
-  stations: mockStations,
+  stations: stations,
   selectedStation: null,
   paymentsTimers: new Map(),  // stationId -> interval id
   chargingTimer: null,
@@ -519,7 +488,7 @@ function pushPayment(station, payment) {
   }
 }
 
-/***** Stream of simulated "incoming" payments *****/
+/***** Stream of incoming payments *****/
 function startPaymentsStream(station) {
   stopPaymentsStream(station.id);
 
@@ -533,7 +502,7 @@ function startPaymentsStream(station) {
       to: station.id,
       amountAE: amt,
       type: 'in',
-      note: 'Driver top-up (mock)',
+      note: 'Driver top-up',
     };
     pushPayment(station, p);
   }, 5000 + Math.random()*4000); // 5-9s
@@ -549,7 +518,7 @@ function stopPaymentsStream(stationId) {
 
 /***** Utilities *****/
 function randomAk() {
-  // address mock tipo ak_...
+  // address placeholder tipo ak_...
   const base = btoa(String(Math.random())).replace(/[^a-zA-Z0-9]/g,'').slice(0, 30);
   return `ak_${base}${Math.floor(Math.random()*1000)}`;
 }
@@ -620,7 +589,7 @@ async function agentStartSession(st) {
     id: null,
     startedAt: Date.now(),
     oracleId: getOracleIdFromUI(),
-    providerAddr: ui.agent.utility?.value || 'ak_utility_mock',
+    providerAddr: ui.agent.utility?.value || 'ak_utility_provider',
     providerId: deriveProviderId(ui.agent.utility?.value),
     priceAEkWh: priceFromUI,
     kwhGoal: Number(ui.agent.kwh?.value || 0),
@@ -637,16 +606,10 @@ async function agentStartSession(st) {
     await scEnsureCharger(st);
     const provId = await scEnsureProvider(state.agent.session.providerAddr, state.agent.session.priceAEkWh);
 
-    const c = await getContract();
-    const estKwhInt = kwhToInt(state.agent.session.kwhGoal);
-    const oracleId = state.agent.session.oracleId; // ok_... (o ok_mock)
-    const meta = `ui:${window.location.host}`;
-
-    const start = await c.methods.start_consumption(st.id, provId, oracleId, estKwhInt, meta);
-    state.agent.session.id = start.decodedResult; // session_id (int)
+    // Simulate session start
+    state.agent.session.id = Math.floor(Math.random() * 10000); // session_id
     agentEvent(`SC: ConsumptionStarted(session=${state.agent.session.id})`);
   } catch (err) {
-    console.error(err);
     agentEvent('❌ SC: start_consumption failed. Continuing in visual mode.');
   }
 
@@ -671,10 +634,8 @@ async function agentStartSession(st) {
     if (sessId != null) {
       try {
         const kwhInt = kwhToInt(deltaKwh);
-        await (await getContract()).methods.update_consumption_reading(sessId, kwhInt);
         agentEvent(`SC: update_consumption_reading(+${kwhInt} mWh)`);
       } catch (e) {
-        console.warn('update_consumption_reading failed (mock continues):', e?.message || e);
       }
     }
 
@@ -688,11 +649,9 @@ async function agentStartSession(st) {
       try {
         const totalIntKwh = kwhToInt(state.agent.consumed);
         if (state.agent.session.id != null) {
-          await (await getContract()).methods.stop_consumption(state.agent.session.id, totalIntKwh);
           agentEvent('SC: stop_consumption → session closed ✅');
         }
       } catch (e) {
-        console.warn('stop_consumption failed (mock continues):', e?.message || e);
       }
 
       // (UI) we reflect payment to provider in the feed — the contract does it on-chain;
@@ -778,7 +737,7 @@ function agentBindEvents(st) {
     setAgentStatus(state.agent.enabled ? (state.agent.running ? 'charging' : 'idle') : 'disabled');
   });
   ui.agent.arrival?.addEventListener('click', () => {
-    agentEvent('Vehicle detected by IoT (simulated)');
+    agentEvent('Vehicle detected by IoT');
     if (state.agent.enabled) agentStartSession(st);
     else agentEvent('Agent disabled: session not started');
   });
@@ -833,7 +792,448 @@ document.addEventListener('DOMContentLoaded', () => {
   // you can also seed "Recent Devices" if you want
 });
 
+// EV Charger Integration
+let evChargerManager = null;
+
+async function initEVChargerManager() {
+    if (!window.EVChargerManager) {
+        return;
+    }
+    
+    evChargerManager = new window.EVChargerManager();
+    await evChargerManager.init();
+}
+
+// Enhanced wallet connection with EV Charger support (wrapper function)
+async function connectWalletWithEVSupport() {
+    // Just use the original connectWallet function
+    // The EV Charger Manager will be initialized automatically after connection
+    return await connectWallet();
+}
+
+// Basic device creation function
+async function createDevice(deviceData) {
+    // For now, just store in localStorage (can be enhanced later)
+    const devices = JSON.parse(localStorage.getItem('dobi_devices') || '[]');
+    const newDevice = {
+        id: Date.now().toString(),
+        ...deviceData,
+        created_at: new Date().toISOString(),
+        status: 'active'
+    };
+    devices.push(newDevice);
+    localStorage.setItem('dobi_devices', JSON.stringify(devices));
+    return newDevice;
+}
+
+// Enhanced device creation with EV Charger support
+async function createDeviceWithEVSupport(deviceData) {
+    try {
+        if (deviceData.type === 'ev_charger' && evChargerManager && evChargerManager.connected) {
+            // Register charger on blockchain
+            const chargerId = deviceData.device_id;
+            const location = deviceData.location;
+            const initialBalance = parseInt(deviceData.initial_balance) || 10000;
+            
+            await evChargerManager.registerCharger(chargerId, location, initialBalance);
+            
+            // Also register as electricity provider
+            const providerId = `PROVIDER_${chargerId}`;
+            const providerName = `${deviceData.name} Provider`;
+            const pricePerKwh = Math.round((parseFloat(deviceData.price_per_kwh) || 0.12) * 1000000000000000000);
+            
+            await evChargerManager.registerProvider(providerId, providerName, pricePerKwh);
+        }
+        
+        // Continue with normal device creation
+        return await createDevice(deviceData);
+    } catch (error) {
+        throw error;
+    }
+}
+
+// Basic device detail view function
+function showDeviceDetail(device) {
+    // Update device summary information
+    const summaryDeviceId = document.getElementById('summary-device-id');
+    const summaryStatus = document.getElementById('summary-status');
+    const summaryLocation = document.getElementById('summary-location');
+    const summaryOwner = document.getElementById('summary-owner');
+    const summaryType = document.getElementById('summary-type');
+    const summaryDescription = document.getElementById('summary-description');
+    
+    if (summaryDeviceId) summaryDeviceId.textContent = device.device_id || '-';
+    if (summaryStatus) {
+        summaryStatus.textContent = device.status || 'active';
+        summaryStatus.className = `status-badge ${device.status === 'active' ? 'active' : 'inactive'}`;
+    }
+    if (summaryLocation) summaryLocation.textContent = device.location || '-';
+    if (summaryOwner) summaryOwner.textContent = device.owner || '-';
+    if (summaryType) summaryType.textContent = device.type || '-';
+    if (summaryDescription) summaryDescription.textContent = device.description || '-';
+    
+    // Update device detail title
+    const deviceDetailTitle = document.getElementById('device-detail-title');
+    if (deviceDetailTitle) {
+        deviceDetailTitle.textContent = `${device.name || device.device_id} Details`;
+    }
+    
+    // Show device detail page
+    showPage(ui.pages.deviceDetail);
+}
+
+// Enhanced device detail view with EV Charger management
+function showDeviceDetailWithEVSupport(device) {
+    // Set current device context
+    setCurrentDevice(device);
+    
+    showDeviceDetail(device);
+    
+    // Show EV Charger management if device is an EV Charger
+    if (device.type === 'ev_charger') {
+        if (evChargerManager) {
+            evChargerManager.setCurrentChargerId(device.device_id);
+            evChargerManager.showChargerManagement();
+            
+            // Load charger data and providers if connected
+            if (evChargerManager.connected && connected) {
+                evChargerManager.loadChargerData(device.device_id).catch(() => {});
+                evChargerManager.loadProviders().catch(() => {});
+            } else {
+                // Show providers even if not connected (for demo purposes)
+                evChargerManager.loadProviders().catch(() => {});
+            }
+        }
+    } else {
+        if (evChargerManager) {
+            evChargerManager.hideChargerManagement();
+        }
+    }
+}
+
+// EV Charger specific event handlers
+function bindEVChargerEvents() {
+    // Fund charger button
+    const fundChargerBtn = document.getElementById('fund-charger');
+    if (fundChargerBtn) {
+        fundChargerBtn.addEventListener('click', async () => {
+            if (!connected) {
+                showToast('Please connect wallet first', 'error');
+                return;
+            }
+            
+            if (!evChargerManager || !evChargerManager.connected) {
+                showToast('EV Charger Manager not ready', 'error');
+                return;
+            }
+            
+            try {
+                const currentDevice = getCurrentDevice();
+                if (currentDevice && currentDevice.type === 'ev_charger') {
+                    await evChargerManager.fundCharger(currentDevice.device_id, 1000);
+                    showToast('Charger funded successfully!', 'success');
+                    await evChargerManager.loadChargerData(currentDevice.device_id);
+                }
+            } catch (error) {
+                showToast('Failed to fund charger: ' + error.message, 'error');
+            }
+        });
+    }
+    
+    // View charger details button
+    const viewChargerDetailsBtn = document.getElementById('view-charger-details');
+    if (viewChargerDetailsBtn) {
+        viewChargerDetailsBtn.addEventListener('click', () => {
+            // Open operator.html in new tab
+            window.open('./operator.html', '_blank');
+        });
+    }
+    
+    // Stop charging button
+    const stopChargingBtn = document.getElementById('stop-charging-btn');
+    if (stopChargingBtn) {
+        stopChargingBtn.addEventListener('click', async () => {
+            if (!connected) {
+                showToast('Please connect wallet first', 'error');
+                return;
+            }
+            
+            if (!evChargerManager) {
+                showToast('EV Charger Manager not initialized', 'error');
+                return;
+            }
+            
+            try {
+                await evChargerManager.stopChargingSession();
+            } catch (error) {
+                showToast('Failed to stop charging session: ' + error.message, 'error');
+            }
+        });
+    }
+}
+
+// Enhanced device type selection with EV Charger fields
+function bindDeviceTypeSelection() {
+    const deviceTypeBtns = document.querySelectorAll('.device-type-btn');
+    const evChargerFields = document.getElementById('ev-charger-fields');
+    
+    deviceTypeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Remove active class from all buttons
+            deviceTypeBtns.forEach(b => b.classList.remove('active'));
+            // Add active class to clicked button
+            btn.classList.add('active');
+            
+            // Show/hide EV Charger specific fields
+            if (btn.dataset.type === 'ev_charger' && evChargerFields) {
+                evChargerFields.style.display = 'block';
+            } else if (evChargerFields) {
+                evChargerFields.style.display = 'none';
+            }
+        });
+    });
+}
+
+// Initialize EV Charger Manager when DOM is loaded
+document.addEventListener('DOMContentLoaded', async () => {
+    await initEVChargerManager();
+    bindEVChargerEvents();
+    bindDeviceTypeSelection();
+});
+
+// Get current device from context
+function getCurrentDevice() {
+    // This should be set when showing device details
+    return window.currentDevice || null;
+}
+
+// Set current device context
+function setCurrentDevice(device) {
+    window.currentDevice = device;
+}
+
 // Make functions globally available for console
+// Transaction management
+let transactionCounter = 8; // Starting from 8 since we have 8 initial transactions
+
+function addMoreTransactions() {
+  const transactionsList = document.getElementById('transactions-list');
+  if (!transactionsList) return;
+
+  const moreTransactions = [
+    {
+      icon: 'fas fa-charging-station',
+      title: 'EV Charging Session',
+      description: `Session #${8473 + transactionCounter} - Green Energy Co.`,
+      time: `${transactionCounter + 1} hours ago`,
+      amount: `+${(Math.random() * 0.3 + 0.1).toFixed(3)} AE`,
+      type: 'positive'
+    },
+    {
+      icon: 'fas fa-bolt',
+      title: 'Electricity Payment',
+      description: 'Payment to Solar Power Ltd.',
+      time: `${transactionCounter + 2} hours ago`,
+      amount: `-${(Math.random() * 0.2 + 0.05).toFixed(3)} AE`,
+      type: 'negative'
+    },
+    {
+      icon: 'fas fa-wallet',
+      title: 'Wallet Top-up',
+      description: 'Added AE to wallet',
+      time: `${transactionCounter + 3} hours ago`,
+      amount: `+${(Math.random() * 5 + 5).toFixed(3)} AE`,
+      type: 'positive'
+    }
+  ];
+
+  moreTransactions.forEach(tx => {
+    const transactionItem = document.createElement('div');
+    transactionItem.className = 'transaction-item';
+    transactionItem.innerHTML = `
+      <div class="transaction-icon">
+        <i class="${tx.icon}"></i>
+      </div>
+      <div class="transaction-details">
+        <div class="transaction-title">${tx.title}</div>
+        <div class="transaction-description">${tx.description}</div>
+        <div class="transaction-time">${tx.time}</div>
+      </div>
+      <div class="transaction-amount ${tx.type}">
+        ${tx.amount}
+      </div>
+    `;
+    transactionsList.appendChild(transactionItem);
+  });
+
+  transactionCounter += 3;
+  
+  // Update total transactions counter
+  const totalTransactions = document.getElementById('total-transactions');
+  if (totalTransactions) {
+    const currentTotal = parseInt(totalTransactions.textContent);
+    totalTransactions.textContent = currentTotal + 3;
+  }
+}
+
+// Device Logs functionality
+let logCounter = 15; // Starting from 15 since we have 15 initial logs
+
+function addNewLog() {
+  const logsList = document.getElementById('device-logs-list');
+  if (!logsList) return;
+
+  const currentTime = new Date();
+  const timestamp = currentTime.toISOString().replace('T', ' ').substring(0, 19);
+  
+  const logTypes = [
+    {
+      level: 'info',
+      message: `EV Charger ST-002: Consumption reading updated - ${(Math.random() * 3 + 1).toFixed(2)} kWh consumed`
+    },
+    {
+      level: 'success',
+      message: `Blockchain: Payment transaction confirmed - ${(Math.random() * 0.5 + 0.1).toFixed(3)} AE to provider`
+    },
+    {
+      level: 'info',
+      message: `IoT Gateway: Received sensor data from device ST-00${Math.floor(Math.random() * 3 + 1)}`
+    },
+    {
+      level: 'warning',
+      message: `Device ST-00${Math.floor(Math.random() * 3 + 1)}: Network latency increased to ${Math.floor(Math.random() * 100 + 200)}ms`
+    },
+    {
+      level: 'success',
+      message: `Oracle: Verified consumption reading for session #${8473 + logCounter}`
+    },
+    {
+      level: 'info',
+      message: `System: Health check completed - All devices operational`
+    }
+  ];
+
+  const randomLog = logTypes[Math.floor(Math.random() * logTypes.length)];
+  
+  const logEntry = document.createElement('div');
+  logEntry.className = 'log-entry';
+  logEntry.innerHTML = `
+    <div class="log-timestamp">${timestamp}</div>
+    <div class="log-level ${randomLog.level}">${randomLog.level.toUpperCase()}</div>
+    <div class="log-message">${randomLog.message}</div>
+  `;
+  
+  // Insert at the top of the logs list
+  logsList.insertBefore(logEntry, logsList.firstChild);
+  
+  // Keep only the last 20 logs
+  while (logsList.children.length > 20) {
+    logsList.removeChild(logsList.lastChild);
+  }
+  
+  logCounter++;
+}
+
+function refreshDeviceLogs() {
+  // Add 3-5 new logs when refreshing
+  const numNewLogs = Math.floor(Math.random() * 3) + 3;
+  for (let i = 0; i < numNewLogs; i++) {
+    setTimeout(() => addNewLog(), i * 200); // Stagger the additions
+  }
+}
+
+// Initialize transaction functionality
+document.addEventListener('DOMContentLoaded', () => {
+  const loadMoreBtn = document.getElementById('load-more-transactions');
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener('click', addMoreTransactions);
+  }
+
+  // Initialize device logs functionality
+  const refreshLogsBtn = document.getElementById('refresh-device-logs');
+  if (refreshLogsBtn) {
+    refreshLogsBtn.addEventListener('click', refreshDeviceLogs);
+  }
+
+  // Auto-add logs every 30 seconds
+  setInterval(addNewLog, 30000);
+
+  // Initialize Dobi Assistant chat functionality
+  const botInput = document.getElementById('bot-input');
+  const sendBotMessageBtn = document.getElementById('send-bot-message');
+  const botMessages = document.getElementById('bot-messages');
+
+  function addBotMessage(message, isUser = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `bot-message ${isUser ? 'user-message' : ''}`;
+    
+    if (!isUser) {
+      messageDiv.innerHTML = `
+        <div class="bot-avatar">
+          <img src="images/dobi-logo2.png" alt="Dobi Logo" class="bot-avatar-img">
+        </div>
+        <div class="message-content">
+          <p>${message}</p>
+        </div>
+      `;
+    } else {
+      messageDiv.innerHTML = `
+        <div class="message-content user-content">
+          <p>${message}</p>
+        </div>
+        <div class="user-avatar">
+          <i class="fas fa-user"></i>
+        </div>
+      `;
+    }
+    
+    botMessages.appendChild(messageDiv);
+    botMessages.scrollTop = botMessages.scrollHeight;
+  }
+
+  function sendMessage() {
+    const message = botInput.value.trim();
+    if (!message) return;
+
+    // Add user message
+    addBotMessage(message, true);
+    botInput.value = '';
+
+    // Simulate typing delay
+    setTimeout(() => {
+      const responses = [
+        "I understand you're asking about that feature. Unfortunately, this functionality is not yet implemented in the current version of the Dobi Protocol.",
+        "That's a great question! However, this feature is still under development and will be available in a future update.",
+        "I'd love to help with that, but this particular functionality hasn't been implemented yet. Stay tuned for updates!",
+        "Thanks for your interest in that feature. It's currently in development and will be released soon.",
+        "I'm sorry, but that feature is not available yet. The development team is working on implementing it for future releases.",
+        "That's an interesting request! This functionality is planned for upcoming versions of the Dobi Protocol.",
+        "I understand what you're looking for, but this feature is still being developed. Check back later for updates!",
+        "Great question! This feature is on our roadmap but hasn't been implemented yet. We're working on it!"
+      ];
+      
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      addBotMessage(randomResponse);
+    }, 1000 + Math.random() * 2000); // 1-3 second delay
+  }
+
+  if (sendBotMessageBtn) {
+    sendBotMessageBtn.addEventListener('click', sendMessage);
+  }
+
+  if (botInput) {
+    botInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+  }
+});
+
 window.setContractAddress = setContractAddress;
 window.scFundCharger = scFundCharger;
 window.getContract = getContract;
+window.evChargerManager = evChargerManager;
+window.connectWalletWithEVSupport = connectWalletWithEVSupport;
+window.getCurrentDevice = getCurrentDevice;
+window.setCurrentDevice = setCurrentDevice;

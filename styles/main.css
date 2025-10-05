@@ -571,3 +571,327 @@ body::after {
 .mt-2 { margin-top: 1rem; }
 .mt-3 { margin-top: 1.5rem; }
 .mt-4 { margin-top: 2rem; }
+
+/* Transaction Styles */
+.transactions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.transaction-item {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.transaction-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(0, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.transaction-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(138, 43, 226, 0.2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.transaction-icon i {
+    font-size: 1.2rem;
+    color: #00ffff;
+}
+
+.transaction-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.transaction-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 0.25rem;
+}
+
+.transaction-description {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0.25rem;
+}
+
+.transaction-time {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.transaction-amount {
+    font-size: 1.125rem;
+    font-weight: 700;
+    text-align: right;
+    min-width: 80px;
+}
+
+.transaction-amount.positive {
+    color: #00ff7f;
+}
+
+.transaction-amount.negative {
+    color: #ff6b6b;
+}
+
+.transaction-amount.neutral {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.load-more {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+/* Device Logs Styles */
+.device-logs-section {
+    margin: 2rem 0;
+}
+
+.device-logs-container {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.logs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.log-entry {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+}
+
+.log-entry:hover {
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateX(2px);
+}
+
+.log-timestamp {
+    color: rgba(255, 255, 255, 0.6);
+    min-width: 140px;
+    font-size: 0.75rem;
+    margin-right: 1rem;
+}
+
+.log-level {
+    min-width: 80px;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+    margin-right: 1rem;
+}
+
+.log-level.info {
+    background: rgba(0, 255, 255, 0.2);
+    color: #00ffff;
+    border-left-color: #00ffff;
+}
+
+.log-level.success {
+    background: rgba(0, 255, 127, 0.2);
+    color: #00ff7f;
+    border-left-color: #00ff7f;
+}
+
+.log-level.warning {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border-left-color: #ffc107;
+}
+
+.log-level.error {
+    background: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+    border-left-color: #ff6b6b;
+}
+
+.log-message {
+    color: rgba(255, 255, 255, 0.9);
+    flex: 1;
+    line-height: 1.4;
+}
+
+/* Scrollbar styling for logs container */
+.device-logs-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.device-logs-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.device-logs-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.device-logs-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 255, 0.5);
+}
+
+/* Dobi Assistant Chat Styles */
+.bot-interface {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.bot-messages {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+    max-height: 300px;
+    padding-right: 0.5rem;
+}
+
+.bot-message {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    gap: 0.75rem;
+}
+
+.bot-message.user-message {
+    flex-direction: row-reverse;
+}
+
+.bot-avatar, .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.bot-avatar {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(138, 43, 226, 0.2));
+}
+
+.user-avatar {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 107, 107, 0.2));
+    color: #ffc107;
+}
+
+.bot-avatar-img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+.message-content {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    max-width: 70%;
+    word-wrap: break-word;
+}
+
+.user-content {
+    background: rgba(0, 255, 255, 0.15);
+    border: 1px solid rgba(0, 255, 255, 0.3);
+}
+
+.message-content p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.bot-input-container {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+#bot-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: #ffffff;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+}
+
+#bot-input:focus {
+    outline: none;
+    border-color: rgba(0, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+#bot-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+#send-bot-message {
+    padding: 0.75rem;
+    min-width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Scrollbar styling for bot messages */
+.bot-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.bot-messages::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.bot-messages::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.bot-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 255, 0.5);
+}

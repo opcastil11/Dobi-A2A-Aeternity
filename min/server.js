@@ -2,6 +2,8 @@
 // INTEGRACIÓN COMPLETA: HARDWARE IoT → ORÁCULO → SMART CONTRACT
 // ============================================
 
+require('dotenv').config();
+
 const { AeSdk, Node, MemoryAccount, CompilerHttp } = require('@aeternity/aepp-sdk');
 const mqtt = require('mqtt'); // Para recibir datos del medidor IoT
 const axios = require('axios');
@@ -10,24 +12,47 @@ const axios = require('axios');
 // 1. CONFIGURACIÓN
 // ============================================
 
+// Procesar variables de entorno y agregar prefijos necesarios
+const oracleSecretKey = process.env.ORACLE_SECRET_KEY || process.env.SECRET_KEY;
+const contractAddress = process.env.CONTRACT_ADDRESS;
+
+// Agregar prefijo sk_ si no lo tiene
+const formattedSecretKey = oracleSecretKey && !oracleSecretKey.startsWith('sk_') 
+  ? `sk_${oracleSecretKey}` 
+  : oracleSecretKey;
+
+// Validar formato (incluyendo 0 en la expresión regular)
+if (!formattedSecretKey || !/^sk_[0-9A-HJ-NP-Za-km-z]+$/.test(formattedSecretKey)) {
+  throw new Error('ORACLE_SECRET_KEY no tiene formato válido');
+}
+if (!contractAddress || !/^ct_[0-9A-HJ-NP-Za-km-z]+$/.test(contractAddress)) {
+  throw new Error('CONTRACT_ADDRESS no tiene formato válido');
+}
+
 const CONFIG = {
   // æternity Network
-  nodeUrl: 'https://testnet.aeternity.io',
-  compilerUrl: 'https://compiler.aepps.com',
+  nodeUrl: process.env.NODE_URL || 'https://testnet.aeternity.io',
+  compilerUrl: process.env.COMPILER_URL || 'https://compiler.aepps.com',
   
   // Smart Contract
-  contractAddress: 'ct_YourContractAddress...',
+  contractAddress: contractAddress,
   
   // Cuenta del oráculo
-  oracleSecretKey: 'sk_YourOracleSecretKey...',
+  oracleSecretKey: formattedSecretKey,
   
   // MQTT (Medidor IoT)
-  mqttBroker: 'mqtt://iot.yourserver.com',
-  mqttTopic: 'ev_charger/+/kwh_reading', // + es wildcard para station_id
+  mqttBroker: process.env.MQTT_BROKER || 'mqtt://test.mosquitto.org:1883',
+  mqttTopic: process.env.MQTT_TOPIC || 'charger/+/consumption',
   
   // Configuración de pagos
-  updateInterval: 5000, // Actualizar cada 5 segundos
-  minKwhIncrement: 0.1  // Mínimo incremento para procesar pago
+  updateInterval: parseInt(process.env.UPDATE_INTERVAL) * 1000 || 10000, // Convertir segundos a ms
+  minKwhIncrement: parseFloat(process.env.MIN_KWH_INCREMENT) || 0.1,
+  
+  // API Server
+  apiPort: parseInt(process.env.API_PORT) || 3000,
+  
+  // Testing
+  simulateIot: process.env.SIMULATE_IOT === 'true'
 };
 
 // ============================================

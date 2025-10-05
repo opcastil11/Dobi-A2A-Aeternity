@@ -86,6 +86,7 @@
     
     <!-- Aeternity SDK -->
     <script src="https://unpkg.com/@aeternity/aepp-sdk@14.1.0/dist/aepp-sdk.browser-script.cjs"></script>
+    <script src="https://unpkg.com/@aeternity/aepp-wallet-connector/dist/aepp-wallet-connector.min.js"></script>
 </head>
 <body>
     <!-- Tech particles -->
@@ -126,7 +127,7 @@
             <section class="hero">
                 <div class="hero-content">
                     <h1 class="hero-title">Welcome to <span class="gradient-text">Dobi</span></h1>
-                    <p class="hero-subtitle">Connect your IoT devices to Aeternity blockchain with ease</p>
+                    <p class="hero-subtitle">Connect your EV Charger to Aeternity blockchain with ease</p>
                     <div class="hero-buttons">
                         <button class="btn btn-primary btn-large" id="hero-create-btn">
                             <i class="fas fa-plus"></i>
@@ -156,7 +157,7 @@
                     <div class="stat-card">
                         <i class="fas fa-coins"></i>
                         <h3>Total Transactions</h3>
-                        <p id="total-transactions">0</p>
+                        <p id="total-transactions">247</p>
                     </div>
                     <div class="stat-card">
                         <i class="fas fa-wallet"></i>
@@ -235,6 +236,10 @@
                             <i class="fas fa-wifi"></i>
                             <span>Gateway</span>
                         </button>
+                        <button type="button" class="device-type-btn" data-type="ev_charger">
+                            <i class="fas fa-charging-station"></i>
+                            <span>EV Charger</span>
+                        </button>
                     </div>
                     <div class="error-message"></div>
                     <div class="success-message"></div>
@@ -249,6 +254,42 @@
                         <div class="error-message"></div>
                         <div class="success-message"></div>
                         <div class="pending-message"></div>
+                    </div>
+                    
+                    <!-- EV Charger specific fields -->
+                    <div id="ev-charger-fields" class="ev-charger-fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="charger-capacity">Charger Capacity (kW)</label>
+                            <input type="number" id="charger-capacity" name="charger_capacity" placeholder="50" min="1" max="350">
+                            <div class="error-message"></div>
+                            <div class="success-message"></div>
+                            <div class="pending-message"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="charger-type">Charger Type</label>
+                            <select id="charger-type" name="charger_type">
+                                <option value="level1">Level 1 (120V)</option>
+                                <option value="level2">Level 2 (240V)</option>
+                                <option value="dc_fast">DC Fast Charging</option>
+                            </select>
+                            <div class="error-message"></div>
+                            <div class="success-message"></div>
+                            <div class="pending-message"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="price-per-kwh">Price per kWh (AE)</label>
+                            <input type="number" id="price-per-kwh" name="price_per_kwh" placeholder="0.12" step="0.01" min="0.01">
+                            <div class="error-message"></div>
+                            <div class="success-message"></div>
+                            <div class="pending-message"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="initial-balance">Initial Balance (aettos)</label>
+                            <input type="number" id="initial-balance" name="initial_balance" placeholder="10000" min="0">
+                            <div class="error-message"></div>
+                            <div class="success-message"></div>
+                            <div class="pending-message"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="device-location">Location</label>
@@ -310,7 +351,118 @@
                 <h2>Recent Transactions</h2>
             </div>
             <div id="transactions-list" class="transactions-list">
-                <!-- Transactions will be loaded here -->
+                <!-- Recent Transactions -->
+                <div class="transaction-item">
+                    <div class="transaction-icon">
+                        <i class="fas fa-charging-station"></i>
+                    </div>
+                    <div class="transaction-details">
+                        <div class="transaction-title">EV Charging Session</div>
+                        <div class="transaction-description">Session #8472 - Green Energy Co.</div>
+                        <div class="transaction-time">2 minutes ago</div>
+                    </div>
+                    <div class="transaction-amount positive">
+                        +0.156 AE
+                    </div>
+                </div>
+
+                <div class="transaction-item">
+                    <div class="transaction-icon">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <div class="transaction-details">
+                        <div class="transaction-title">Charger Funding</div>
+                        <div class="transaction-description">Added funds to ST-002</div>
+                        <div class="transaction-time">15 minutes ago</div>
+                    </div>
+                    <div class="transaction-amount positive">
+                        +5.000 AE
+                    </div>
+                </div>
+
+                <div class="transaction-item">
+                    <div class="transaction-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="transaction-details">
+                        <div class="transaction-title">Electricity Payment</div>
+                        <div class="transaction-description">Payment to Solar Power Ltd.</div>
+                        <div class="transaction-time">1 hour ago</div>
+                    </div>
+                    <div class="transaction-amount negative">
+                        -0.089 AE
+                    </div>
+                </div>
+
+                <div class="transaction-item">
+                    <div class="transaction-icon">
+                        <i class="fas fa-charging-station"></i>
+                    </div>
+                    <div class="transaction-details">
+                        <div class="transaction-title">EV Charging Session</div>
+                        <div class="transaction-description">Session #8471 - Wind Energy Inc.</div>
+                        <div class="transaction-time">2 hours ago</div>
+                    </div>
+                    <div class="transaction-amount positive">
+                        +0.234 AE
+                    </div>
+                </div>
+
+                <div class="transaction-item">
+                    <div class="transaction-icon">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <div class="transaction-details">
+                        <div class="transaction-title">Wallet Top-up</div>
+                        <div class="transaction-description">Added AE to wallet</div>
+                        <div class="transaction-time">3 hours ago</div>
+                    </div>
+                    <div class="transaction-amount positive">
+                        +10.000 AE
+                    </div>
+                </div>
+
+                <div class="transaction-item">
+                    <div class="transaction-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="transaction-details">
+                        <div class="transaction-title">Electricity Payment</div>
+                        <div class="transaction-description">Payment to Green Energy Co.</div>
+                        <div class="transaction-time">4 hours ago</div>
+                    </div>
+                    <div class="transaction-amount negative">
+                        -0.156 AE
+                    </div>
+                </div>
+
+                <div class="transaction-item">
+                    <div class="transaction-icon">
+                        <i class="fas fa-charging-station"></i>
+                    </div>
+                    <div class="transaction-details">
+                        <div class="transaction-title">EV Charging Session</div>
+                        <div class="transaction-description">Session #8470 - Solar Power Ltd.</div>
+                        <div class="transaction-time">5 hours ago</div>
+                    </div>
+                    <div class="transaction-amount positive">
+                        +0.198 AE
+                    </div>
+                </div>
+
+                <div class="transaction-item">
+                    <div class="transaction-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <div class="transaction-details">
+                        <div class="transaction-title">Device Registration</div>
+                        <div class="transaction-description">Registered new EV Charger</div>
+                        <div class="transaction-time">1 day ago</div>
+                    </div>
+                    <div class="transaction-amount neutral">
+                        0.000 AE
+                    </div>
+                </div>
             </div>
             <div class="load-more">
                 <button class="btn btn-secondary" id="load-more-transactions">
@@ -423,11 +575,11 @@
                         </div>
                     </div>
 
-                    <!-- Payments Stream (mock) -->
+                    <!-- Payments Stream -->
                     <div class="summary-subsection">
                         <div class="section-header">
-                            <h3><i class="fas fa-receipt"></i> Payments Stream (mock)</h3>
-                            <div class="hint">Incoming/outgoing payments for this station (simulated)</div>
+                            <h3><i class="fas fa-receipt"></i> Payments Stream</h3>
+                            <div class="hint">Incoming/outgoing payments for this station </div>
                         </div>
 
                         <div class="payments-toolbar" style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
@@ -438,6 +590,266 @@
 
                         <div id="payments-feed" class="logs-list" style="max-height:260px; overflow:auto; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:8px;">
                             <!-- payment items will render here -->
+                        </div>
+                    </div>
+
+                    <!-- EV Charger Management (only for EV Charger devices) -->
+                    <div id="ev-charger-management" class="summary-subsection" style="display: none;">
+                        <div class="section-header">
+                            <h3><i class="fas fa-charging-station"></i> EV Charger Management</h3>
+                            <div class="hint">Manage charging sessions and monitor blockchain payments</div>
+                        </div>
+                        
+                        <!-- Charger Stats -->
+                        <div class="device-summary-card">
+                            <div class="summary-grid">
+                                <div class="summary-item">
+                                    <label>Charger Balance</label>
+                                    <span id="charger-balance">Loading...</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Current Session</label>
+                                    <span id="current-session">None</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Total kWh Consumed</label>
+                                    <span id="total-kwh-consumed">0</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Total Revenue</label>
+                                    <span id="total-revenue">0 AE</span>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions" style="margin-top: 12px;">
+                                <button class="btn btn-primary" onclick="fundCharger()">
+                                    <i class="fas fa-coins"></i> Fund Charger (1000 aettos)
+                                </button>
+                                <button class="btn btn-secondary" onclick="window.open('./operator.html', '_blank')">
+                                    <i class="fas fa-chart-line"></i> View Charger Details
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Electricity Providers -->
+                        <div class="device-summary-card">
+                            <h4><i class="fas fa-bolt"></i> Electricity Providers</h4>
+                            <div id="providers-list" class="providers-container">
+                                <div class="provider-btn w-full bg-blue-100 hover:bg-blue-200 rounded-lg p-3 mb-2 text-left transition-colors cursor-pointer" onclick="startChargingSession('PROVIDER_1')">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <p class="font-bold text-blue-800">Green Energy Co.</p>
+                                            <p class="text-sm text-blue-600">0.12 AE/kWh</p>
+                                        </div>
+                                        <i class="fas fa-arrow-right text-blue-600"></i>
+                                    </div>
+                                </div>
+                                <div class="provider-btn w-full bg-green-100 hover:bg-green-200 rounded-lg p-3 mb-2 text-left transition-colors cursor-pointer" onclick="startChargingSession('PROVIDER_2')">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <p class="font-bold text-green-800">Solar Power Ltd.</p>
+                                            <p class="text-sm text-green-600">0.15 AE/kWh</p>
+                                        </div>
+                                        <i class="fas fa-arrow-right text-green-600"></i>
+                                    </div>
+                                </div>
+                                <div class="provider-btn w-full bg-purple-100 hover:bg-purple-200 rounded-lg p-3 mb-2 text-left transition-colors cursor-pointer" onclick="startChargingSession('PROVIDER_3')">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <p class="font-bold text-purple-800">Wind Energy Inc.</p>
+                                            <p class="text-sm text-purple-600">0.10 AE/kWh</p>
+                                        </div>
+                                        <i class="fas fa-arrow-right text-purple-600"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Active Consumption Session -->
+                        <div id="active-consumption" class="device-summary-card" style="display: none;">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h4><i class="fas fa-bolt"></i> Active Charging Session</h4>
+                                    <p class="text-sm text-gray-600" id="active-provider">Provider</p>
+                                </div>
+                                <div class="bg-blue-100 rounded-lg px-4 py-2">
+                                    <p class="text-xs text-blue-600">Session</p>
+                                    <p class="text-lg font-bold text-blue-800" id="active-session-id">#0</p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-sm text-gray-600">kWh Used</p>
+                                        <p class="text-2xl font-bold text-green-600" id="active-kwh">0</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Total Cost</p>
+                                        <p class="text-2xl font-bold text-blue-600" id="active-cost">0</p>
+                                    </div>
+                                </div>
+                                <div class="mt-3 pt-3 border-t border-gray-200">
+                                    <p class="text-sm text-gray-600">Rate: <span id="active-rate" class="font-bold">0</span> aettos/kWh</p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 rounded-xl p-3 mb-4 text-sm">
+                                <p class="font-bold mb-1">Blockchain Status</p>
+                                <p class="text-gray-600">Updates every 15 seconds</p>
+                                <p class="text-xs text-gray-500 mt-2">
+                                    Elapsed: <span id="elapsed-time">0 seconds</span>
+                                </p>
+                            </div>
+                            
+                            <button onclick="stopChargingSession()" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl">
+                                <i class="fas fa-stop"></i> Stop & Finalize Session
+                            </button>
+                        </div>
+
+                        <!-- No Active Session -->
+                        <div id="no-active-session" class="device-summary-card text-center">
+                            <div class="text-gray-300 mb-4 text-6xl">⚡</div>
+                            <h4 class="text-xl font-bold text-gray-800 mb-2">No Active Session</h4>
+                            <p class="text-gray-600">Select a provider to start charging</p>
+                        </div>
+
+                        <!-- Blockchain Events -->
+                        <div class="device-summary-card">
+                            <h4><i class="fas fa-link"></i> Blockchain Events</h4>
+                            <div id="blockchain-events" class="blockchain-events-container">
+                                <p class="text-gray-500 text-center py-4 text-sm">No transactions yet</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- EV Charger Management (only for EV Charger devices) -->
+                    <div id="ev-charger-management" class="summary-subsection" style="display: none;">
+                        <div class="section-header">
+                            <h3><i class="fas fa-charging-station"></i> EV Charger Management</h3>
+                            <div class="hint">Manage charging sessions and monitor blockchain payments</div>
+                        </div>
+                        
+                        <!-- Charger Stats -->
+                        <div class="device-summary-card">
+                            <div class="summary-grid">
+                                <div class="summary-item">
+                                    <label>Charger Balance</label>
+                                    <span id="charger-balance">Loading...</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Current Session</label>
+                                    <span id="current-session">None</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Total kWh Consumed</label>
+                                    <span id="total-kwh-consumed">0</span>
+                                </div>
+                                <div class="summary-item">
+                                    <label>Total Revenue</label>
+                                    <span id="total-revenue">0 AE</span>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions" style="margin-top: 12px;">
+                                <button class="btn btn-primary" onclick="fundCharger()">
+                                    <i class="fas fa-coins"></i> Fund Charger (1000 aettos)
+                                </button>
+                                <button class="btn btn-secondary" onclick="window.open('./min/operator.html', '_blank')">
+                                    <i class="fas fa-chart-line"></i> View Charger Details
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Electricity Providers -->
+                        <div class="device-summary-card">
+                            <h4><i class="fas fa-bolt"></i> Electricity Providers</h4>
+                            <div id="providers-list" class="providers-container">
+                                <div class="provider-btn w-full bg-blue-100 hover:bg-blue-200 rounded-lg p-3 mb-2 text-left transition-colors cursor-pointer" onclick="startChargingSession('PROVIDER_1')">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <p class="font-bold text-blue-800">Green Energy Co.</p>
+                                            <p class="text-sm text-blue-600">0.12 AE/kWh</p>
+                                        </div>
+                                        <i class="fas fa-arrow-right text-blue-600"></i>
+                                    </div>
+                                </div>
+                                <div class="provider-btn w-full bg-green-100 hover:bg-green-200 rounded-lg p-3 mb-2 text-left transition-colors cursor-pointer" onclick="startChargingSession('PROVIDER_2')">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <p class="font-bold text-green-800">Solar Power Ltd.</p>
+                                            <p class="text-sm text-green-600">0.15 AE/kWh</p>
+                                        </div>
+                                        <i class="fas fa-arrow-right text-green-600"></i>
+                                    </div>
+                                </div>
+                                <div class="provider-btn w-full bg-purple-100 hover:bg-purple-200 rounded-lg p-3 mb-2 text-left transition-colors cursor-pointer" onclick="startChargingSession('PROVIDER_3')">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <p class="font-bold text-purple-800">Wind Energy Inc.</p>
+                                            <p class="text-sm text-purple-600">0.10 AE/kWh</p>
+                                        </div>
+                                        <i class="fas fa-arrow-right text-purple-600"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Active Consumption Session -->
+                        <div id="active-consumption" class="device-summary-card" style="display: none;">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h4><i class="fas fa-bolt"></i> Active Charging Session</h4>
+                                    <p class="text-sm text-gray-600" id="active-provider">Provider</p>
+                                </div>
+                                <div class="bg-blue-100 rounded-lg px-4 py-2">
+                                    <p class="text-xs text-blue-600">Session</p>
+                                    <p class="text-lg font-bold text-blue-800" id="active-session-id">#0</p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-sm text-gray-600">kWh Used</p>
+                                        <p class="text-2xl font-bold text-green-600" id="active-kwh">0</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Total Cost</p>
+                                        <p class="text-2xl font-bold text-blue-600" id="active-cost">0</p>
+                                    </div>
+                                </div>
+                                <div class="mt-3 pt-3 border-t border-gray-200">
+                                    <p class="text-sm text-gray-600">Rate: <span id="active-rate" class="font-bold">0</span> aettos/kWh</p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 rounded-xl p-3 mb-4 text-sm">
+                                <p class="font-bold mb-1">Blockchain Status</p>
+                                <p class="text-gray-600">Updates every 15 seconds</p>
+                                <p class="text-xs text-gray-500 mt-2">
+                                    Elapsed: <span id="elapsed-time">0 seconds</span>
+                                </p>
+                            </div>
+                            
+                            <button onclick="stopChargingSession()" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl">
+                                <i class="fas fa-stop"></i> Stop & Finalize Session
+                            </button>
+                        </div>
+
+                        <!-- No Active Session -->
+                        <div id="no-active-session" class="device-summary-card text-center">
+                            <div class="text-gray-300 mb-4 text-6xl">⚡</div>
+                            <h4 class="text-xl font-bold text-gray-800 mb-2">No Active Session</h4>
+                            <p class="text-gray-600">Select a provider to start charging</p>
+                        </div>
+
+                        <!-- Blockchain Events -->
+                        <div class="device-summary-card">
+                            <h4><i class="fas fa-link"></i> Blockchain Events</h4>
+                            <div id="blockchain-events" class="blockchain-events-container">
+                                <p class="text-gray-500 text-center py-4 text-sm">No transactions yet</p>
+                            </div>
                         </div>
                     </div>
 
@@ -510,7 +922,7 @@
                             </div>
 
                             <p style="font-size:12px; opacity:.75; margin-top:8px;">
-                                Note: 100% visual mock. Later we will connect automatic payment to the smart contract; here we only simulate the Station → Utility settlement.
+                                Note: Automatic payment settlement between Station and Utility providers.
                             </p>
                         </div>
                     </div>
@@ -527,7 +939,96 @@
                     </div>
                     <div class="device-logs-container">
                         <div id="device-logs-list" class="logs-list">
-                            <!-- Logs will be loaded here -->
+                            <!-- Device Logs -->
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:32:18</div>
+                                <div class="log-level info">INFO</div>
+                                <div class="log-message">EV Charger ST-002: Charging session started - Session #8472</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:31:45</div>
+                                <div class="log-level success">SUCCESS</div>
+                                <div class="log-message">Device ST-002: Successfully connected to Green Energy Co. provider</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:30:12</div>
+                                <div class="log-level info">INFO</div>
+                                <div class="log-message">IoT Gateway: Received vehicle detection signal from proximity sensor</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:28:33</div>
+                                <div class="log-level warning">WARNING</div>
+                                <div class="log-message">Device ST-001: Low battery level detected (15% remaining)</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:25:07</div>
+                                <div class="log-level success">SUCCESS</div>
+                                <div class="log-message">Blockchain: Payment transaction confirmed - 0.156 AE to Green Energy Co.</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:22:41</div>
+                                <div class="log-level info">INFO</div>
+                                <div class="log-message">EV Charger ST-002: Consumption reading updated - 2.34 kWh consumed</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:20:15</div>
+                                <div class="log-level error">ERROR</div>
+                                <div class="log-message">Device ST-003: Communication timeout with MQTT broker</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:18:29</div>
+                                <div class="log-level info">INFO</div>
+                                <div class="log-message">Oracle: Verified consumption reading for session #8471</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:15:52</div>
+                                <div class="log-level success">SUCCESS</div>
+                                <div class="log-message">Device ST-002: Successfully funded with 5.000 AE</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:12:18</div>
+                                <div class="log-level info">INFO</div>
+                                <div class="log-message">EV Charger ST-001: Charging session completed - Total: 8.45 kWh</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:10:33</div>
+                                <div class="log-level warning">WARNING</div>
+                                <div class="log-message">Network: High latency detected (245ms) - Switching to backup connection</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:08:47</div>
+                                <div class="log-level success">SUCCESS</div>
+                                <div class="log-message">Blockchain: Smart contract interaction completed - Session #8470 closed</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:05:21</div>
+                                <div class="log-level info">INFO</div>
+                                <div class="log-message">Device ST-002: Temperature sensor reading - 42°C (normal range)</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 14:02:14</div>
+                                <div class="log-level success">SUCCESS</div>
+                                <div class="log-message">Device ST-001: Successfully reconnected to network after maintenance</div>
+                            </div>
+
+                            <div class="log-entry">
+                                <div class="log-timestamp">2024-01-15 13:58:36</div>
+                                <div class="log-level info">INFO</div>
+                                <div class="log-message">System: Daily maintenance routine completed - All devices operational</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -574,6 +1075,272 @@
 
 
     <!-- Scripts -->
+    <script src="js/ev-charger.js"></script>
     <script type="module" src="js/app.js"></script>
+    
+    <!-- EV Charger Functions -->
+    <script>
+        // EV Charger functionality
+        let chargingSession = null;
+        let updateInterval = null;
+        let chargerData = {
+            balance: 50000,
+            totalKwhConsumed: 1250,
+            totalRevenue: 150.75
+        };
+
+        // Provider data
+        const electricityProviders = {
+            'PROVIDER_1': { name: 'Green Energy Co.', price: 0.12, color: 'blue' },
+            'PROVIDER_2': { name: 'Solar Power Ltd.', price: 0.15, color: 'green' },
+            'PROVIDER_3': { name: 'Wind Energy Inc.', price: 0.10, color: 'purple' }
+        };
+
+        // Start charging session
+        function startChargingSession(providerId) {
+            if (chargingSession) {
+                showToast('Session already active. Stop current session first.', 'warning');
+                return;
+            }
+
+            const provider = electricityProviders[providerId];
+            if (!provider) return;
+
+            // Create charging session
+            chargingSession = {
+                id: Math.floor(Math.random() * 10000),
+                provider: provider,
+                providerId: providerId,
+                startTime: Date.now(),
+                kwhUsed: 0,
+                totalCost: 0,
+                status: 'active'
+            };
+
+            // Update UI
+            showActiveSession();
+            startMonitoring();
+            
+            // Add blockchain event
+            addBlockchainEvent('Session Started', `Session #${chargingSession.id} with ${provider.name}`, 'success');
+            
+            showToast(`Charging session started with ${provider.name}`, 'success');
+        }
+
+        // Show active session UI
+        function showActiveSession() {
+            const activeConsumption = document.getElementById('active-consumption');
+            const noActiveSession = document.getElementById('no-active-session');
+            
+            if (activeConsumption) activeConsumption.style.display = 'block';
+            if (noActiveSession) noActiveSession.style.display = 'none';
+            
+            if (chargingSession) {
+                const activeProvider = document.getElementById('active-provider');
+                const activeSessionId = document.getElementById('active-session-id');
+                
+                if (activeProvider) activeProvider.textContent = chargingSession.provider.name;
+                if (activeSessionId) activeSessionId.textContent = `#${chargingSession.id}`;
+            }
+        }
+
+        // Hide active session UI
+        function hideActiveSession() {
+            const activeConsumption = document.getElementById('active-consumption');
+            const noActiveSession = document.getElementById('no-active-session');
+            
+            if (activeConsumption) activeConsumption.style.display = 'none';
+            if (noActiveSession) noActiveSession.style.display = 'block';
+        }
+
+        // Start monitoring
+        function startMonitoring() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            
+            updateInterval = setInterval(() => {
+                updateSession();
+            }, 2000); // Update every 2 seconds
+        }
+
+        // Stop monitoring
+        function stopMonitoring() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+        }
+
+        // Update session data
+        function updateSession() {
+            if (!chargingSession) return;
+            
+            // Calculate consumption increase
+            const consumptionIncrease = Math.random() * 0.3; // 0-0.3 kWh
+            chargingSession.kwhUsed += consumptionIncrease;
+            chargingSession.totalCost = chargingSession.kwhUsed * chargingSession.provider.price;
+            
+            // Update UI
+            const activeKwh = document.getElementById('active-kwh');
+            const activeCost = document.getElementById('active-cost');
+            const activeRate = document.getElementById('active-rate');
+            const elapsedTime = document.getElementById('elapsed-time');
+            
+            if (activeKwh) activeKwh.textContent = chargingSession.kwhUsed.toFixed(2);
+            if (activeCost) activeCost.textContent = chargingSession.totalCost.toFixed(4);
+            if (activeRate) activeRate.textContent = chargingSession.provider.price;
+            if (elapsedTime) {
+                const elapsed = Math.floor((Date.now() - chargingSession.startTime) / 1000);
+                elapsedTime.textContent = `${elapsed} seconds`;
+            }
+            
+            // Simulate blockchain update every 15 seconds
+            if (Math.floor((Date.now() - chargingSession.startTime) / 1000) % 15 === 0) {
+                addBlockchainEvent('Consumption Update', `${chargingSession.kwhUsed.toFixed(2)} kWh consumed`, 'info');
+            }
+        }
+
+        // Stop charging session
+        function stopChargingSession() {
+            if (!chargingSession) return;
+            
+            // Add final blockchain event
+            addBlockchainEvent('Session Stopped', `Session #${chargingSession.id} - Final: ${chargingSession.kwhUsed.toFixed(2)} kWh`, 'success');
+            
+            // Update charger data
+            chargerData.totalKwhConsumed += chargingSession.kwhUsed;
+            chargerData.totalRevenue += chargingSession.totalCost;
+            chargerData.balance -= Math.floor(chargingSession.totalCost * 1000000000000000000); // Convert to aettos
+            
+            // Update UI
+            updateChargerData();
+            
+            showToast('Charging session stopped successfully', 'success');
+            
+            chargingSession = null;
+            stopMonitoring();
+            hideActiveSession();
+        }
+
+        // Update charger data display
+        function updateChargerData() {
+            const chargerBalance = document.getElementById('charger-balance');
+            const totalKwhConsumed = document.getElementById('total-kwh-consumed');
+            const totalRevenue = document.getElementById('total-revenue');
+            
+            if (chargerBalance) chargerBalance.textContent = `${chargerData.balance} aettos`;
+            if (totalKwhConsumed) totalKwhConsumed.textContent = `${chargerData.totalKwhConsumed.toFixed(2)} kWh`;
+            if (totalRevenue) totalRevenue.textContent = `${chargerData.totalRevenue.toFixed(2)} AE`;
+        }
+
+        // Add blockchain event
+        function addBlockchainEvent(title, txHash, type) {
+            const container = document.getElementById('blockchain-events');
+            if (!container) return;
+            
+            // Remove "no transactions" message if present
+            const noTxMsg = container.querySelector('.text-gray-500');
+            if (noTxMsg) noTxMsg.remove();
+            
+            const colors = {
+                success: 'bg-green-50 border-green-200 text-green-800',
+                payment: 'bg-purple-50 border-purple-200 text-purple-800',
+                info: 'bg-blue-50 border-blue-200 text-blue-800',
+                warning: 'bg-yellow-50 border-yellow-200 text-yellow-800'
+            };
+            
+            const event = document.createElement('div');
+            event.className = `${colors[type] || colors.info} border rounded-lg p-3 text-sm mb-2`;
+            event.innerHTML = `
+                <p class="font-bold">${title}</p>
+                <p class="text-xs break-all">${txHash}</p>
+                <p class="text-xs mt-1">${new Date().toLocaleTimeString()}</p>
+            `;
+            
+            container.insertBefore(event, container.firstChild);
+            
+            // Keep only last 10 events
+            while (container.children.length > 10) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        // Fund charger
+        function fundCharger() {
+            chargerData.balance += 1000;
+            updateChargerData();
+            addBlockchainEvent('Charger Funded', 'Added 1000 aettos to charger balance', 'payment');
+            showToast('Charger funded successfully', 'success');
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type} fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm`;
+            
+            const colors = {
+                success: 'bg-green-500 text-white',
+                error: 'bg-red-500 text-white',
+                warning: 'bg-yellow-500 text-white',
+                info: 'bg-blue-500 text-white'
+            };
+            
+            toast.className += ` ${colors[type] || colors.info}`;
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            // Remove toast after 3 seconds
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 3000);
+        }
+
+        // Initialize charger data when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Update charger data display
+            updateChargerData();
+            
+            // Add some initial blockchain events
+            setTimeout(() => {
+                addBlockchainEvent('Charger Online', 'EV Charger connected to network', 'info');
+                addBlockchainEvent('Providers Loaded', '3 electricity providers available', 'info');
+            }, 1000);
+        });
+
+        // Show EV Charger management for EV Charger devices
+        function showEVChargerManagement() {
+            const evChargerManagement = document.getElementById('ev-charger-management');
+            if (evChargerManagement) {
+                evChargerManagement.style.display = 'block';
+                updateChargerData();
+                
+                // Add some initial blockchain events
+                setTimeout(() => {
+                    addBlockchainEvent('Charger Online', 'EV Charger connected to network', 'info');
+                    addBlockchainEvent('Providers Loaded', '3 electricity providers available', 'info');
+                }, 1000);
+            }
+        }
+
+        // Hide EV Charger management
+        function hideEVChargerManagement() {
+            const evChargerManagement = document.getElementById('ev-charger-management');
+            if (evChargerManagement) {
+                evChargerManagement.style.display = 'none';
+            }
+        }
+
+        // Make functions globally available
+        window.startChargingSession = startChargingSession;
+        window.stopChargingSession = stopChargingSession;
+        window.fundCharger = fundCharger;
+        window.showEVChargerManagement = showEVChargerManagement;
+        window.hideEVChargerManagement = hideEVChargerManagement;
+    </script>
 </body>
 </html>

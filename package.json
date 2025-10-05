@@ -6,7 +6,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "echo 'Static build - no build step required'",
+    "vercel-build": "echo 'Vercel build completed'"
   },
   "dependencies": {
     "@aeternity/aepp-sdk": "^14.1.0"
