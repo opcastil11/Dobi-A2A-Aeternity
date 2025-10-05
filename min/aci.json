@@ -1,0 +1,151 @@
+{
+    "language": "sophia",
+    "version": "6",
+    "abi": [
+      {
+        "name": "init",
+        "arguments": [],
+        "returns": { "type": "state" }
+      },
+      {
+        "name": "register_charger",
+        "arguments": [
+          { "name": "charger_id", "type": "string" },
+          { "name": "location", "type": "string" },
+          { "name": "initial_balance", "type": "int" }
+        ],
+        "stateful": true,
+        "returns": { "type": "unit" }
+      },
+      {
+        "name": "fund_charger",
+        "arguments": [
+          { "name": "charger_id", "type": "string" }
+        ],
+        "stateful": true,
+        "payable": true,
+        "returns": { "type": "unit" }
+      },
+      {
+        "name": "get_charger_info",
+        "arguments": [
+          { "name": "charger_id", "type": "string" }
+        ],
+        "returns": { "type": "option(charger_info)" }
+      },
+      {
+        "name": "get_charger_balance",
+        "arguments": [
+          { "name": "charger_id", "type": "string" }
+        ],
+        "returns": { "type": "int" }
+      },
+      {
+        "name": "register_provider",
+        "arguments": [
+          { "name": "provider_id", "type": "string" },
+          { "name": "name", "type": "string" },
+          { "name": "price_per_kwh", "type": "int" }
+        ],
+        "stateful": true,
+        "returns": { "type": "unit" }
+      },
+      {
+        "name": "get_provider_info",
+        "arguments": [
+          { "name": "provider_id", "type": "string" }
+        ],
+        "returns": { "type": "option(electricity_provider)" }
+      },
+      {
+        "name": "start_consumption",
+        "arguments": [
+          { "name": "charger_id", "type": "string" },
+          { "name": "provider_id", "type": "string" },
+          { "name": "oracle_id", "type": "oracle(string,int)" },
+          { "name": "estimated_kwh", "type": "int" },
+          { "name": "metadata", "type": "string" }
+        ],
+        "stateful": true,
+        "returns": { "type": "int" }
+      },
+      {
+        "name": "update_consumption_reading",
+        "arguments": [
+          { "name": "session_id", "type": "int" },
+          { "name": "kwh_reading", "type": "int" }
+        ],
+        "stateful": true,
+        "returns": { "type": "unit" }
+      },
+      {
+        "name": "stop_consumption",
+        "arguments": [
+          { "name": "session_id", "type": "int" },
+          { "name": "final_kwh", "type": "int" }
+        ],
+        "stateful": true,
+        "returns": { "type": "unit" }
+      },
+      {
+        "name": "get_session",
+        "arguments": [
+          { "name": "session_id", "type": "int" }
+        ],
+        "returns": { "type": "option(consumption_session)" }
+      }
+    ],
+    "types": [
+      {
+        "name": "charger_info",
+        "type": "record",
+        "fields": [
+          { "name": "id", "type": "string" },
+          { "name": "operator", "type": "address" },
+          { "name": "location", "type": "string" },
+          { "name": "balance", "type": "int" },
+          { "name": "total_kwh_consumed", "type": "int" },
+          { "name": "total_paid", "type": "int" },
+          { "name": "is_active", "type": "bool" },
+          { "name": "created_at", "type": "int" }
+        ]
+      },
+      {
+        "name": "electricity_provider",
+        "type": "record",
+        "fields": [
+          { "name": "id", "type": "string" },
+          { "name": "provider_address", "type": "address" },
+          { "name": "name", "type": "string" },
+          { "name": "price_per_kwh", "type": "int" },
+          { "name": "total_kwh_supplied", "type": "int" },
+          { "name": "total_revenue", "type": "int" },
+          { "name": "is_active", "type": "bool" }
+        ]
+      },
+      {
+        "name": "consumption_session",
+        "type": "record",
+        "fields": [
+          { "name": "id", "type": "int" },
+          { "name": "charger_id", "type": "string" },
+          { "name": "provider_id", "type": "string" },
+          { "name": "start_time", "type": "int" },
+          { "name": "end_time", "type": "option(int)" },
+          { "name": "kwh_consumed", "type": "int" },
+          { "name": "price_per_kwh", "type": "int" },
+          { "name": "total_cost", "type": "int" },
+          { "name": "last_reading_time", "type": "int" },
+          { "name": "status", "type": "consumption_status" },
+          { "name": "oracle_id", "type": "oracle(string,int)" },
+          { "name": "metadata", "type": "string" }
+        ]
+      },
+      {
+        "name": "consumption_status",
+        "type": "datatype",
+        "values": ["Active", "Completed", "Cancelled"]
+      }
+    ]
+  }
+  
